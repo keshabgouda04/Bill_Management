@@ -58,10 +58,25 @@ axiosInstance.interceptors.response.use(
       console.log('Session expired. Please login again.');
     }
 
-    const message =
-      (error.response?.data as any)?.message ||
-      error.message ||
-      `Request failed with status ${error.response?.status}`;
+    const errorData = error.response?.data as any;
+    console.error('API Error Response:', errorData);
+
+    let message = errorData?.message || error.message || `Request failed with status ${error.response?.status}`;
+    
+    // Append detailed validation errors if they exist (common in Python/FastAPI/Django/Laravel)
+    if (errorData?.detail) {
+      if (typeof errorData.detail === 'string') {
+        message = `${message}: ${errorData.detail}`;
+      } else if (Array.isArray(errorData.detail)) {
+        // FastAPI style validation errors
+        const details = errorData.detail.map((e: any) => `${e.loc?.join('.') || 'field'}: ${e.msg}`).join(', ');
+        message = `${message} - ${details}`;
+      }
+    } else if (errorData?.errors) {
+      message = `${message}: ${JSON.stringify(errorData.errors)}`;
+    } else if (errorData?.error) {
+      message = `${message}: ${JSON.stringify(errorData.error)}`;
+    }
 
     return Promise.reject(new Error(message));
   }
@@ -76,6 +91,9 @@ export const api = {
 
   put: (path: string, body?: any, options?: AxiosRequestConfig) =>
     axiosInstance.put(path, body, options),
+
+  patch: (path: string, body?: any, options?: AxiosRequestConfig) =>
+    axiosInstance.patch(path, body, options),
 
   delete: (path: string, options?: AxiosRequestConfig) =>
     axiosInstance.delete(path, options),

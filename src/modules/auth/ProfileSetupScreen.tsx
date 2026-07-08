@@ -7,37 +7,52 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../navigation/AppNavigator';
-import { supabase } from '../../services/supabase';
+import { supabase } from '../../helper/supabase';
+import { useGetProfileDetails } from '../../services/query/profile/profile';
+import { useUpdateProfileDetails } from '../../services/mutation/profile/profileSetup';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ProfileSetup'>;
 
 export default function ProfileSetupScreen({ navigation }: Props) {
-  const [fullName, setFullName] = useState('');
-  const [gender, setGender] = useState('');
+  const { data } = useGetProfileDetails();
+  const profile = data?.profile;
+
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [gender, setGender] = useState(profile?.gender || '');
   const [showGenderSelect, setShowGenderSelect] = useState(false);
 
   useEffect(() => {
-    // Fetch the logged-in user's data from Supabase
-    const fetchUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      // Google OAuth usually stores the user's name in user_metadata.full_name
-      if (user?.user_metadata?.full_name) {
-        setFullName(user.user_metadata.full_name);
-      }
-    };
-    
-    fetchUserData();
-  }, []);
+    if (profile?.full_name) setFullName(profile.full_name);
+    if (profile?.gender) setGender(profile.gender);
+  }, [profile]);
+
+  const mutation = useUpdateProfileDetails();
 
   const handleCompleteSetup = () => {
-    // Navigate to Dashboard after setup
-    navigation.replace('Dashboard');
+    if (!fullName.trim() || !gender) {
+      Alert.alert('Required Fields', 'Please enter your full name and select a gender.');
+      return;
+    }
+
+    mutation.mutate(
+      { full_name: fullName.trim(), gender: gender },
+      {
+        onSuccess: () => {
+          navigation.replace('Dashboard');
+        },
+        onError: (error: any) => {
+          Alert.alert('Update Failed', error.message || 'Could not update profile. Please try again.');
+        }
+      }
+    );
   };
 
   const handleBackToLogin = async () => {
@@ -47,7 +62,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      
+
       {/* Background Pattern / Color */}
       <View style={styles.background} />
 
@@ -103,23 +118,37 @@ export default function ProfileSetupScreen({ navigation }: Props) {
               activeOpacity={0.8}
             >
               <Text style={[styles.selectText, !gender && { color: '#999' }]}>
-                {gender || 'Select Gender'}
+                {gender === 'male' ? 'Male' : 
+                 gender === 'female' ? 'Female' : 
+                 gender === 'other' ? 'Other' : 
+                 gender === 'prefer_not_to_say' ? 'Prefer not to say' : 
+                 'Select Gender'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
             
             {showGenderSelect && (
               <View style={styles.dropdown}>
-                {['Male', 'Female', 'Other', 'Prefer not to say'].map((option) => (
+                {[
+                  { label: 'Male', value: 'male' },
+                  { label: 'Female', value: 'female' },
+                  { label: 'Other', value: 'other' },
+                  { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+                ].map((option) => (
                   <TouchableOpacity
-                    key={option}
+                    key={option.value}
                     style={styles.dropdownOption}
                     onPress={() => {
-                      setGender(option);
+                      setGender(option.value);
                       setShowGenderSelect(false);
                     }}
                   >
-                    <Text style={styles.dropdownOptionText}>{option}</Text>
+                    <Text style={[
+                      styles.dropdownOptionText,
+                      gender === option.value && styles.dropdownItemSelected
+                    ]}>
+                      {option.label}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -127,18 +156,25 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           </View>
 
           {/* Complete Setup Button */}
-          <TouchableOpacity 
-            style={styles.button}
+          <TouchableOpacity
+            style={[styles.button, mutation.isPending && styles.buttonDisabled]}
             onPress={handleCompleteSetup}
             activeOpacity={0.8}
+            disabled={mutation.isPending}
           >
-            <Text style={styles.buttonText}>Complete Setup</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+            {mutation.isPending ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Complete Setup</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFF" />
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
         {/* Back to Login */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backToLoginButton}
           onPress={handleBackToLogin}
         >

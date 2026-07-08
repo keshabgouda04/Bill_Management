@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Session } from '@supabase/supabase-js';
-import { supabase } from '../services/supabase';
+import { supabase } from '../helper/supabase';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // 1. Get initial session on app start
@@ -19,10 +21,13 @@ export default function RootNavigator() {
 
     // 2. Listen for auth changes dynamically
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("=================================");
       console.log("Auth Event:", _event);
-      console.log("Session:", session);
-      console.log("=================================");
+
+      if (_event === 'SIGNED_OUT') {
+        // Completely wipe the React Query cache so the next user doesn't see old data
+        queryClient.clear();
+      }
+
       setSession(session);
       setLoading(false);
     });
