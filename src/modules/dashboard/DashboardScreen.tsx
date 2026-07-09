@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
-import { supabase } from '../../services/supabase';
+import { supabase } from '../../helper/supabase';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function DashboardScreen() {
