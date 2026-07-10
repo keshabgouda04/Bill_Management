@@ -10,6 +10,8 @@ export interface UpdateProfilePayload {
   language?: string;
   timezone?: string;
   gender?: string;
+  phone?: string;
+  email?: string;
 }
 
 export const patchProfileDetails = async (data: UpdateProfilePayload) => {

@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../helper/supabase';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import { useQueryClient } from '@tanstack/react-query';
+import { SplashScreen } from '../modules/auth';
 
 export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [splashVisible, setSplashVisible] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    // Keep splash screen visible for 2 seconds
+    const timer = setTimeout(() => {
+      setSplashVisible(false);
+    }, 4000);
+
     // 1. Get initial session on app start
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log("Initial Session:", session);
@@ -33,27 +39,15 @@ export default function RootNavigator() {
     });
 
     return () => {
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4B65E4" />
-      </View>
-    );
+  if (loading || splashVisible) {
+    return <SplashScreen />;
   }
 
   // Switch stacks based on the session state
   return session ? <AppNavigator /> : <AuthNavigator />;
 }
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
