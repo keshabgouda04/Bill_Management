@@ -6,10 +6,11 @@ const BASE_URL =
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 20000, // 20 seconds
+  timeout: 60000, // 60 seconds
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true', //After deploy remove this line 
   },
 });
 
@@ -59,10 +60,17 @@ axiosInstance.interceptors.response.use(
     }
 
     const errorData = error.response?.data as any;
-    console.error('API Error Response:', errorData);
+    console.error('API Error Details:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      message: error.message,
+      code: error.code,
+      responseStatus: error.response?.status,
+      responseData: errorData,
+    });
 
     let message = errorData?.message || error.message || `Request failed with status ${error.response?.status}`;
-    
+
     // Append detailed validation errors if they exist (common in Python/FastAPI/Django/Laravel)
     if (errorData?.detail) {
       if (typeof errorData.detail === 'string') {
@@ -83,18 +91,18 @@ axiosInstance.interceptors.response.use(
 );
 
 export const api = {
-  get: (path: string, options?: AxiosRequestConfig) =>
+  get: <T = any>(path: string, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.get(path, options),
 
-  post: (path: string, body?: any, options?: AxiosRequestConfig) =>
+  post: <T = any>(path: string, body?: any, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.post(path, body, options),
 
-  put: (path: string, body?: any, options?: AxiosRequestConfig) =>
+  put: <T = any>(path: string, body?: any, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.put(path, body, options),
 
-  patch: (path: string, body?: any, options?: AxiosRequestConfig) =>
+  patch: <T = any>(path: string, body?: any, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.patch(path, body, options),
 
-  delete: (path: string, options?: AxiosRequestConfig) =>
+  delete: <T = any>(path: string, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.delete(path, options),
 };
