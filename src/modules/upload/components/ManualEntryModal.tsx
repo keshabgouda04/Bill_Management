@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,6 +19,17 @@ import { useCreateBill } from '../../bills/api/billsApi';
 interface ManualEntryModalProps {
   visible: boolean;
   onClose: () => void;
+}
+
+interface Product {
+  id: string;
+  itemName: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  taxAmount: string;
+  serialNumber: string;
+  warrantyMonths: string;
 }
 
 const parseDateToISO = (dateStr: string): string | null => {
@@ -49,15 +60,108 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
   const [billCategory, setBillCategory] = useState('Other');
   const [billNotes, setBillNotes] = useState('');
-  
+
   // Warranty states
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
 
+  // Products (bill_items) state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productName, setProductName] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productQty, setProductQty] = useState('1');
+  const [productUnitPrice, setProductUnitPrice] = useState('');
+  const [productTax, setProductTax] = useState('');
+  const [productSerialNumber, setProductSerialNumber] = useState('');
+  const [productWarrantyMonths, setProductWarrantyMonths] = useState('');
+  const [showProductExtras, setShowProductExtras] = useState(false);
+
   const mutation = useCreateBill();
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const productsTaxTotal = products.reduce((sum, p) => {
+        const taxVal = parseFloat(p.taxAmount) || 0;
+        return sum + taxVal;
+      }, 0);
+      setTaxAmount(productsTaxTotal > 0 ? String(productsTaxTotal) : '0');
+    }
+  }, [products]);
+
+  const handleAddProduct = () => {
+    if (!productName.trim()) {
+      Alert.alert('Product Name Required', 'Please enter a product name.');
+      return;
+    }
+
+    const parsedPrice = parseFloat(productUnitPrice);
+    if (!productUnitPrice.trim() || isNaN(parsedPrice) || parsedPrice < 0) {
+      Alert.alert('Invalid Price', 'Please enter a valid unit price.');
+      return;
+    }
+
+    const parsedQty = productQty.trim() ? parseFloat(productQty) : 1;
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid quantity.');
+      return;
+    }
+
+    const parsedTax = productTax.trim() ? parseFloat(productTax) : undefined;
+    if (parsedTax !== undefined && (isNaN(parsedTax) || parsedTax < 0)) {
+      Alert.alert('Invalid Tax', 'Please enter a valid tax amount for this item.');
+      return;
+    }
+
+    const parsedWarrantyMonths = productWarrantyMonths.trim()
+      ? parseInt(productWarrantyMonths, 10)
+      : undefined;
+    if (parsedWarrantyMonths !== undefined && (isNaN(parsedWarrantyMonths) || parsedWarrantyMonths < 0)) {
+      Alert.alert('Invalid Warranty', 'Please enter a valid number of warranty months.');
+      return;
+    }
+
+    const newProduct: Product = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      itemName: productName.trim(),
+      description: productDescription.trim(),
+      quantity: String(parsedQty),
+      unitPrice: String(parsedPrice),
+      taxAmount: parsedTax !== undefined ? String(parsedTax) : '',
+      serialNumber: productSerialNumber.trim(),
+      warrantyMonths: parsedWarrantyMonths !== undefined ? String(parsedWarrantyMonths) : '',
+    };
+
+    setProducts((prev) => [...prev, newProduct]);
+    setProductName('');
+    setProductDescription('');
+    setProductQty('1');
+    setProductUnitPrice('');
+    setProductTax('');
+    setProductSerialNumber('');
+    setProductWarrantyMonths('');
+    setShowProductExtras(false);
+  };
+
+  const handleRemoveProduct = (id: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const productsTotal = products.reduce((sum, p) => {
+    const qty = parseFloat(p.quantity) || 0;
+    const price = parseFloat(p.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
 
   const handleSubmit = () => {
     // 1. Validation
+    if (productName.trim()) {
+      Alert.alert(
+        'Unsaved Product Info',
+        'You have entered product details but have not tapped "Add Product". Please either save the product to the list first or clear the fields.'
+      );
+      return;
+    }
+
     if (!billName.trim() || !billAmount.trim() || !billDate.trim()) {
       Alert.alert('Required Fields', 'Please fill in Bill Name, Amount, and Date.');
       return;
@@ -124,6 +228,17 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
       warranty_until: isoWarrantyDate,
       notes: billNotes.trim() || undefined,
       category_id: null, // to be mapped by backend or linked later
+      bill_items: products.length
+        ? products.map((p) => ({
+            item_name: p.itemName,
+            description: p.description || undefined,
+            quantity: parseFloat(p.quantity) || 0,
+            unit_price: parseFloat(p.unitPrice) || 0,
+            tax_amount: p.taxAmount.trim() ? parseFloat(p.taxAmount) : undefined,
+            serial_number: p.serialNumber.trim() || undefined,
+            warranty_months: p.warrantyMonths.trim() ? parseInt(p.warrantyMonths, 10) : undefined,
+          }))
+        : undefined,
     };
 
     mutation.mutate(payload, {
@@ -141,6 +256,15 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
         setBillNotes('');
         setHasWarranty(false);
         setWarrantyUntil('');
+        setProducts([]);
+        setProductName('');
+        setProductDescription('');
+        setProductQty('1');
+        setProductUnitPrice('');
+        setProductTax('');
+        setProductSerialNumber('');
+        setProductWarrantyMonths('');
+        setShowProductExtras(false);
         onClose();
       },
       onError: (err: any) => {
@@ -200,6 +324,147 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
               </View>
             </View>
 
+            {/* Products Section */}
+            <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Products</Text>
+
+            {products.length > 0 && (
+              <View style={styles.productList}>
+                {products.map((p) => (
+                  <View key={p.id} style={styles.productRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.productName}>{p.itemName}</Text>
+                      <Text style={styles.productMeta}>
+                        {p.quantity} × ₹{p.unitPrice} = ₹
+                        {(parseFloat(p.quantity) * parseFloat(p.unitPrice)).toFixed(2)}
+                      </Text>
+                      {!!p.description && <Text style={styles.productMeta}>{p.description}</Text>}
+                      {(!!p.serialNumber || !!p.warrantyMonths || !!p.taxAmount) && (
+                        <Text style={styles.productMeta}>
+                          {[
+                            p.serialNumber ? `S/N: ${p.serialNumber}` : null,
+                            p.warrantyMonths ? `Warranty: ${p.warrantyMonths} mo` : null,
+                            p.taxAmount ? `Tax: ₹${p.taxAmount}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveProduct(p.id)}
+                      style={styles.productRemoveBtn}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#E14B4B" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <View style={styles.productTotalRow}>
+                  <Text style={styles.productTotalLabel}>Products Total</Text>
+                  <Text style={styles.productTotalValue}>₹{productsTotal.toFixed(2)}</Text>
+                </View>
+              </View>
+            )}
+
+            <Text style={styles.fieldLabel}>Product Name *</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="e.g. iPhone Case"
+              placeholderTextColor="#BBB"
+              value={productName}
+              onChangeText={setProductName}
+            />
+
+            <View style={styles.row}>
+              <View style={styles.col}>
+                <Text style={styles.fieldLabel}>Quantity</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="1"
+                  placeholderTextColor="#BBB"
+                  keyboardType="numeric"
+                  value={productQty}
+                  onChangeText={setProductQty}
+                />
+              </View>
+              <View style={styles.col}>
+                <Text style={styles.fieldLabel}>Unit Price (₹) *</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="e.g. 499"
+                  placeholderTextColor="#BBB"
+                  keyboardType="numeric"
+                  value={productUnitPrice}
+                  onChangeText={setProductUnitPrice}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.productExtrasToggle}
+              onPress={() => setShowProductExtras((prev) => !prev)}
+            >
+              <Ionicons
+                name={showProductExtras ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color="#4B65E4"
+              />
+              <Text style={styles.productExtrasToggleText}>
+                {showProductExtras ? 'Hide' : 'Add'} description, serial number, warranty & tax
+              </Text>
+            </TouchableOpacity>
+
+            {showProductExtras && (
+              <>
+                <Text style={styles.fieldLabel}>Description</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="e.g. Blue, 128GB variant"
+                  placeholderTextColor="#BBB"
+                  value={productDescription}
+                  onChangeText={setProductDescription}
+                />
+
+                <View style={styles.row}>
+                  <View style={styles.col}>
+                    <Text style={styles.fieldLabel}>Serial Number</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="e.g. SN123456"
+                      placeholderTextColor="#BBB"
+                      value={productSerialNumber}
+                      onChangeText={setProductSerialNumber}
+                    />
+                  </View>
+                  <View style={styles.col}>
+                    <Text style={styles.fieldLabel}>Warranty (months)</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      placeholder="e.g. 12"
+                      placeholderTextColor="#BBB"
+                      keyboardType="numeric"
+                      value={productWarrantyMonths}
+                      onChangeText={setProductWarrantyMonths}
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.fieldLabel}>Item Tax Amount (₹)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  placeholder="e.g. 25"
+                  placeholderTextColor="#BBB"
+                  keyboardType="numeric"
+                  value={productTax}
+                  onChangeText={setProductTax}
+                />
+              </>
+            )}
+
+            <TouchableOpacity style={styles.addProductBtn} onPress={handleAddProduct} activeOpacity={0.85}>
+              <Ionicons name="add-circle-outline" size={18} color="#4B65E4" />
+              <Text style={styles.addProductBtnText}>Add Product</Text>
+            </TouchableOpacity>
+
             {/* Optional Fields Group */}
             <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Additional Details (Optional)</Text>
 
@@ -228,14 +493,20 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
 
             <View style={styles.row}>
               <View style={styles.col}>
-                <Text style={styles.fieldLabel}>Tax Amount (₹)</Text>
+                <Text style={styles.fieldLabel}>
+                  Tax Amount (₹){products.length > 0 ? ' (Auto)' : ''}
+                </Text>
                 <TextInput
-                  style={styles.fieldInput}
+                  style={[
+                    styles.fieldInput,
+                    products.length > 0 && { backgroundColor: '#EAEAEA', color: '#666' }
+                  ]}
                   placeholder="e.g. 250"
                   placeholderTextColor="#BBB"
                   keyboardType="numeric"
                   value={taxAmount}
                   onChangeText={setTaxAmount}
+                  editable={products.length === 0}
                 />
               </View>
               <View style={styles.col}>
@@ -276,7 +547,7 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
             </View>
 
             {/* Warranty Info Section */}
-            <View style={styles.warrantyToggleRow}>
+            {/* <View style={styles.warrantyToggleRow}>
               <View>
                 <Text style={styles.warrantyTitle}>Includes Warranty?</Text>
                 <Text style={styles.warrantySubtitle}>Specify to track warranty expiry alert</Text>
@@ -287,9 +558,9 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
                 trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
                 thumbColor={hasWarranty ? '#4B65E4' : '#F3F4F6'}
               />
-            </View>
+            </View> */}
 
-            {hasWarranty && (
+            {/* {hasWarranty && (
               <View style={{ marginTop: 8 }}>
                 <Text style={styles.fieldLabel}>Warranty Expiration Date *</Text>
                 <TextInput
@@ -300,7 +571,7 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
                   onChangeText={setWarrantyUntil}
                 />
               </View>
-            )}
+            )} */}
 
             <Text style={styles.fieldLabel}>Notes</Text>
             <TextInput
@@ -367,7 +638,7 @@ const styles = StyleSheet.create({
     color: '#1A1A1A', backgroundColor: '#FAFAFA',
   },
   fieldInputMulti: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
-  
+
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -376,7 +647,7 @@ const styles = StyleSheet.create({
   col: {
     flex: 1,
   },
-  
+
   pickerWrapper: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -411,6 +682,86 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888',
     marginTop: 2,
+  },
+
+  // Products
+  productList: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FAFAFA',
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  productMeta: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  productRemoveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#EEF2FF',
+  },
+  productTotalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B65E4',
+  },
+  productTotalValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B65E4',
+  },
+  productExtrasToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 12,
+  },
+  productExtrasToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B65E4',
+  },
+  addProductBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#4B65E4',
+    backgroundColor: '#EEF2FF',
+  },
+  addProductBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4B65E4',
   },
 
   submitBtn: {

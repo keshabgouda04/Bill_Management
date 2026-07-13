@@ -7,8 +7,8 @@ import { Bill, PaymentStatus } from '../api/billsApi';
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; bg: string; text: string; dot: string }> = {
   PAID:     { label: 'Paid',     bg: '#ECFDF5', text: '#10B981', dot: '#10B981' },
-  PENDING:  { label: 'Pending',  bg: '#FFF7ED', text: '#F59E0B', dot: '#F59E0B' },
-  OVERDUE:  { label: 'Overdue',  bg: '#FFF1F2', text: '#EF4444', dot: '#EF4444' },
+  UNPAID:   { label: 'Unpaid',   bg: '#FFF1F2', text: '#EF4444', dot: '#EF4444' },
+  PARTIAL:  { label: 'Partial',  bg: '#FFF7ED', text: '#F59E0B', dot: '#F59E0B' },
   REFUNDED: { label: 'Refunded', bg: '#F0F0FF', text: '#6366F1', dot: '#6366F1' },
 };
 
@@ -21,8 +21,8 @@ const CATEGORY_ICON: Record<string, { icon: string; bg: string; color: string }>
   gas:         { icon: 'flame-outline',     bg: '#FFF7ED', color: '#F97316' },
 };
 
-function getIconConfig(invoiceNumber: string) {
-  const lower = invoiceNumber.toLowerCase();
+function getIconConfig(invoiceNumber?: string | null) {
+  const lower = (invoiceNumber || '').toLowerCase();
   for (const key of Object.keys(CATEGORY_ICON)) {
     if (lower.includes(key)) return CATEGORY_ICON[key];
   }
@@ -46,7 +46,7 @@ interface BillCardProps {
 }
 
 export const BillCard = ({ bill, onPress }: BillCardProps) => {
-  const statusCfg = STATUS_CONFIG[bill.payment_status] ?? STATUS_CONFIG.PENDING;
+  const statusCfg = STATUS_CONFIG[bill.payment_status] ?? STATUS_CONFIG.UNPAID;
   const iconCfg = getIconConfig(bill.invoice_number);
 
   return (

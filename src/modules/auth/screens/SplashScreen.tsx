@@ -8,6 +8,9 @@ const { width } = Dimensions.get('window');
 export default function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  useEffect(() => {
+  console.log('Splash mounted');
+}, []);
 
   useEffect(() => {
     Animated.parallel([

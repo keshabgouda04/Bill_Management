@@ -6,7 +6,7 @@ import { ProfileSetupScreen, SplashScreen } from '../modules/auth';
 import { ProfileScreen } from '../modules/profile';
 import { CategoriesScreen } from '../modules/categories';
 import { useGetProfileDetails } from '../services/query/profile/profile';
-import { ViewBillsScreen } from '../modules/bills';
+import { BillDetailsScreen, ViewBillsScreen } from '../modules/bills';
 
 export type AppStackParamList = {
   ProfileSetup: undefined;
@@ -14,6 +14,7 @@ export type AppStackParamList = {
   Profile: undefined;
   Categories: undefined;
   ViewBills: undefined;
+  BillDetails: { billId: string };
 };
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -26,7 +27,7 @@ export default function AppNavigator() {
   }
 
   const profile = data?.profile;
-  console.log(profile, "profile======>")
+  console.log(profile, 'profile======>');
   const initialRoute = profile?.onboarding_completed ? 'Dashboard' : 'ProfileSetup';
 
   return (
@@ -42,10 +43,10 @@ export default function AppNavigator() {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="ViewBills" component={ViewBillsScreen} />
+      <Stack.Screen name="BillDetails" component={BillDetailsScreen} />
     </Stack.Navigator>
   );
 }
-
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,

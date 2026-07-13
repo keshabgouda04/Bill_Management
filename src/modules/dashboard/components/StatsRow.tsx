@@ -1,24 +1,83 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { useGetBills } from '../../bills/api/billsApi';
 
-const STATS = [
-  { label: 'Total Bills', value: '124', sub: 'This month' },
-  { label: 'Active Warranties', value: '12', sub: '2 expiring' },
-  { label: 'Categories', value: '8', sub: 'Organized' },
-  { label: 'Storage', value: '3.5 GB', sub: 'of 5 GB used' },
-];
+export const StatsRow = () => {
+  const { data, isLoading } = useGetBills();
+  const bills = data?.data?.bills || [];
+ 
+  // 1. Total Bills
+  const totalBills = bills.length;
+  const now = new Date();
+  const thisMonthBills = bills.filter((b) => {
+    const d = new Date(b.purchase_date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const thisMonthCount = thisMonthBills.length;
 
-export const StatsRow = () => (
-  <View style={styles.statsRow}>
-    {STATS.map((stat, i) => (
-      <View key={i} style={styles.statCard}>
-        <Text style={styles.statValue}>{stat.value}</Text>
-        <Text style={styles.statLabel}>{stat.label}</Text>
-        <Text style={styles.statSub}>{stat.sub}</Text>
-      </View>
-    ))}
-  </View>
-);
+  // 2. Active Warranties & Expiring
+  let activeWarrantiesCount = 0;
+  let expiringSoonCount = 0;
+  const nowMs = Date.now();
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+  bills.forEach((bill) => {
+    if (!bill.bill_items || !bill.purchase_date) return;
+    bill.bill_items.forEach((item) => {
+      if (typeof item.warranty_months === 'number' && item.warranty_months > 0) {
+        const purchaseDate = new Date(bill.purchase_date);
+        const expiryDate = new Date(purchaseDate);
+        expiryDate.setMonth(expiryDate.getMonth() + item.warranty_months);
+
+        const diffTime = expiryDate.getTime() - nowMs;
+        if (diffTime > 0) {
+          activeWarrantiesCount++;
+          if (diffTime <= thirtyDaysMs) {
+            expiringSoonCount++;
+          }
+        }
+      }
+    });
+  });
+
+  // 3. Categories
+  const categoriesSet = new Set<string>();
+  bills.forEach((b) => {
+    // console.log(b.category_id,"category_id")
+    if (b.category_id) {
+      categoriesSet.add(b.category_id);
+    }
+  });
+  const uniqueCategories = categoriesSet.size || 1;
+  console.log("uniqueCategories",categoriesSet.size);
+
+  // 4. Storage (scanned receipts estimation)
+  const scannedCount = bills.filter((b) => b.photo_url || b.image_url || b.receipt_url || b.file_url).length;
+  const estimatedStorageMB = Math.max(0.1, scannedCount * 0.5).toFixed(1);
+
+  const STATS = [
+    { label: 'Total Bills', value: String(totalBills), sub: `${thisMonthCount} this month` },
+    { label: 'Active Warranties', value: String(activeWarrantiesCount), sub: `${expiringSoonCount} expiring` },
+    { label: 'Categories', value: String(uniqueCategories), sub: 'Organized' },
+    { label: 'Storage', value: `${estimatedStorageMB} MB`, sub: 'of 5 GB used' },
+  ];
+
+  return (
+    <View style={styles.statsRow}>
+      {STATS.map((stat, i) => (
+        <View key={i} style={styles.statCard}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#4B65E4" style={{ alignSelf: 'flex-start', marginVertical: 4 }} />
+          ) : (
+            <Text style={styles.statValue}>{stat.value}</Text>
+          )}
+          <Text style={styles.statLabel}>{stat.label}</Text>
+          <Text style={styles.statSub}>{stat.sub}</Text>
+        </View>
+      ))}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },

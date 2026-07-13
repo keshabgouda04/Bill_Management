@@ -2,10 +2,25 @@ import { API_URL } from '../../../constants/apiEndpoints';
 import { api } from '../../../helper/axiosConfig';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export type PaymentStatus = 'PAID' | 'PENDING' | 'REFUNDED' | 'OVERDUE';
+export type PaymentStatus = 'PAID' | 'UNPAID' | 'PARTIAL' | 'REFUNDED';
 export type BillStatus = 'DRAFT' | 'PROCESSED' | 'FLAGGED';
+
+type Nullable<T> = T | null;
+
+export interface BillItem {
+  id: string;
+  bill_id: string;
+  item_name: string;
+  description: Nullable<string>;
+  quantity: number;
+  unit_price: number;
+  tax_amount: number;
+  total_price: number;
+  serial_number: Nullable<string>;
+  warranty_months: Nullable<number>;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Bill {
   id: string;
@@ -17,6 +32,41 @@ export interface Bill {
   purchase_date: string;
   created_at: string;
   updated_at: string;
+  warranty_until?: Nullable<string>;
+  purchase_location?: Nullable<string>;
+  bill_items?: BillItem[];
+  category_id?: Nullable<string>;
+  photo_url?: Nullable<string>;
+  image_url?: Nullable<string>;
+  receipt_url?: Nullable<string>;
+  file_url?: Nullable<string>;
+}
+
+export interface BillDetail extends Bill {
+  merchant_id: Nullable<string>;
+  category_id: Nullable<string>;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  payment_method: string;
+  warranty_until: Nullable<string>;
+  purchase_location: Nullable<string>;
+  notes: Nullable<string>;
+  ocr_status: Nullable<string>;
+  ai_status: Nullable<string>;
+  confidence_score: Nullable<number>;
+  deleted_at?: Nullable<string>;
+  user_id?: string;
+  photo_url?: Nullable<string>;
+  image_url?: Nullable<string>;
+  receipt_url?: Nullable<string>;
+  file_url?: Nullable<string>;
+  document_url?: Nullable<string>;
+  attachment_url?: Nullable<string>;
+  original_file_url?: Nullable<string>;
+  bill_image_url?: Nullable<string>;
+  bill_photo_url?: Nullable<string>;
+  bill_items?: BillItem[];
 }
 
 interface BillsResponse {
@@ -27,13 +77,23 @@ interface BillsResponse {
   };
 }
 
-// ─── API ──────────────────────────────────────────────────────────────────────
+interface BillDetailResponse {
+  success: boolean;
+  message: string;
+  data: {
+    bill: BillDetail;
+  };
+}
 
 export const fetchBills = async (): Promise<BillsResponse> => {
   return api.get<BillsResponse>(API_URL.BILLS.LIST);
 };
 
-// ─── Query ────────────────────────────────────────────────────────────────────
+export const fetchBillById = async (
+  billId: string,
+): Promise<BillDetailResponse> => {
+  return api.get<BillDetailResponse>(`${API_URL.BILLS.DETAIL}/${billId}`);
+};
 
 export const useBillsQueryOptions = () =>
   queryOptions({
@@ -43,4 +103,15 @@ export const useBillsQueryOptions = () =>
     retry: 1,
   });
 
+export const useBillDetailsQueryOptions = (billId: string) =>
+  queryOptions({
+    queryKey: ['bills', billId],
+    queryFn: () => fetchBillById(billId),
+    staleTime: 1000 * 60 * 2,
+    retry: 1,
+    enabled: Boolean(billId),
+  });
+
 export const useGetBills = () => useQuery(useBillsQueryOptions());
+
+export const useGetBillDetails = (billId: string) => useQuery(useBillDetailsQueryOptions(billId));
