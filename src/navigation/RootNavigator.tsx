@@ -1,36 +1,34 @@
+
 import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
+
 import { supabase } from '../helper/supabase';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
-import { useQueryClient } from '@tanstack/react-query';
-import { SplashScreen } from '../modules/auth';
 
 export default function RootNavigator() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [splashVisible, setSplashVisible] = useState(true);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Keep splash screen visible for 2 seconds
-    const timer = setTimeout(() => {
-      setSplashVisible(false);
-    }, 4000);
-
-    // 1. Get initial session on app start
+    // Get initial session on app start
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial Session:", session);
+      console.log('Initial Session:', session);
       setSession(session);
       setLoading(false);
     });
 
-    // 2. Listen for auth changes dynamically
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth Event:", _event);
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth Event:', _event);
 
       if (_event === 'SIGNED_OUT') {
-        // Completely wipe the React Query cache so the next user doesn't see old data
+        // Clear React Query cache on logout
         queryClient.clear();
       }
 
@@ -39,15 +37,26 @@ export default function RootNavigator() {
     });
 
     return () => {
-      clearTimeout(timer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
-  if (loading || splashVisible) {
-    return <SplashScreen />;
+  // Wait only until Supabase session is determined
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
-  // Switch stacks based on the session state
+  // Show App or Auth based on session
   return session ? <AppNavigator /> : <AuthNavigator />;
 }
+

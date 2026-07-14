@@ -15,9 +15,18 @@ export interface CreateBillPayload {
   payment_method?: string;
   payment_status?: string;
   bill_status?: string;
-  warranty_until?: string; // ISO String
+  warranty_until?: string | null; // ISO String
   purchase_location?: string;
   notes?: string;
+  bill_items?: Array<{
+    item_name: string;
+    description?: string;
+    quantity: number;
+    unit_price: number;
+    tax_amount?: number;
+    serial_number?: string;
+    warranty_months?: number;
+  }>;
 }
 
 interface CreateBillResponse {

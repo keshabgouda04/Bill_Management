@@ -11,26 +11,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../../../navigation/AppNavigator';
 import { useGetBills, Bill, PaymentStatus } from '../api/billsApi';
 import { BillCard } from '../components/BillCard';
 
 type FilterType = 'ALL' | 'UPCOMING' | 'PAID' | 'OVERDUE';
 
 export default function ViewBillsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data, isLoading, isError, refetch } = useGetBills();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
 
   const bills = data?.data?.bills || [];
+  
 
   // Filter bills based on selected tab
   const filteredBills = useMemo(() => {
     switch (selectedFilter) {
       case 'UPCOMING':
-        return bills.filter((b) => b.payment_status === 'PENDING'); case 'PAID':
+        return bills.filter((b) => b.payment_status === 'PARTIAL');
+      case 'PAID':
         return bills.filter((b) => b.payment_status === 'PAID');
       case 'OVERDUE':
-        return bills.filter((b) => b.payment_status === 'OVERDUE');
+        return bills.filter((b) => b.payment_status === 'UNPAID');
       case 'ALL':
       default:
         return bills;
@@ -119,7 +123,12 @@ export default function ViewBillsScreen() {
       <FlatList
         data={filteredBills}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BillCard bill={item} />}
+        renderItem={({ item }) => (
+          <BillCard
+            bill={item}
+            onPress={() => navigation.navigate('BillDetails', { billId: item.id })}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -298,3 +307,4 @@ const styles = StyleSheet.create({
     color: '#0052CC',
   },
 });
+
