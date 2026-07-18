@@ -106,3 +106,4 @@ export const api = {
   delete: <T = any>(path: string, options?: AxiosRequestConfig): Promise<T> =>
     axiosInstance.delete(path, options),
 };
+

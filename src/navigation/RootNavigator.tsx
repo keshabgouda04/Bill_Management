@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
@@ -59,4 +58,3 @@ export default function RootNavigator() {
   // Show App or Auth based on session
   return session ? <AppNavigator /> : <AuthNavigator />;
 }
-

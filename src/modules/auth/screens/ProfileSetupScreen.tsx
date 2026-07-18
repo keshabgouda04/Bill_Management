@@ -50,14 +50,38 @@ export default function ProfileSetupScreen({ navigation }: Props) {
       return;
     }
 
+    // Validate Full Name: at least 2 characters and only letters/spaces
+    const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+    if (!nameRegex.test(fullName.trim())) {
+      Alert.alert('Invalid Name', 'Full name must be at least 2 characters and contain only letters.');
+      return;
+    }
+
     if (isGoogleAuth && !phoneNumber.trim()) {
       Alert.alert('Required Fields', 'Please enter your phone number.');
       return;
     }
 
+    if (isGoogleAuth) {
+      const rawNumber = phoneNumber.replace(/[^0-9]/g, '');
+      const indianPhoneRegex = /^[6-9]\d{9}$/;
+      if (!indianPhoneRegex.test(rawNumber)) {
+        Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit Indian phone number.');
+        return;
+      }
+    }
+
     if (!isGoogleAuth && !email.trim()) {
       Alert.alert('Required Fields', 'Please enter your email address.');
       return;
+    }
+
+    if (!isGoogleAuth) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        Alert.alert('Invalid Email', 'Please enter a valid email address.');
+        return;
+      }
     }
 
     const payload: any = { full_name: fullName.trim(), gender: gender };

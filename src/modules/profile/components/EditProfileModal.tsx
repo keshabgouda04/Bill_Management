@@ -41,8 +41,18 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
   }, [profile]);
 
   const handleSaveEdit = () => {
+    const trimmedName = editFullName.trim();
+    
+    if (trimmedName) {
+      const nameRegex = /^[a-zA-Z\s]{2,50}$/;
+      if (!nameRegex.test(trimmedName)) {
+        Alert.alert('Invalid Name', 'Full name must be at least 2 characters and contain only letters.');
+        return;
+      }
+    }
+
     const payload: Record<string, string> = {};
-    if (editFullName.trim()) payload.full_name = editFullName.trim();
+    if (trimmedName) payload.full_name = trimmedName;
     if (editCountry.trim())  payload.country = editCountry.trim();
     if (editLanguage.trim()) payload.language = editLanguage.trim();
     if (editTimezone.trim()) payload.timezone = editTimezone.trim();

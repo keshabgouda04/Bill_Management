@@ -177,7 +177,7 @@ export default function BillDetailsScreen() {
             </TouchableOpacity>
           </View>
           <InfoRow label="Bill Date" value={formatDate(bill.purchase_date)} />
-          <InfoRow label="Category" value={bill.category_id || 'Electronics'} />
+          <InfoRow label="Category" value={bill.category?.name || 'Electronics'} />
           <InfoRow label="Payment Method" value={bill.payment_method} />
           <InfoRow label="Bill Status" value={bill.bill_status} />
           <InfoRow label="Bill Number" value={bill.invoice_number} />

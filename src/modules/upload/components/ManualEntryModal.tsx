@@ -14,6 +14,7 @@ import {
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useCreateBill } from '../../bills/api/billsApi';
 
 interface ManualEntryModalProps {
@@ -47,18 +48,67 @@ const parseDateToISO = (dateStr: string): string | null => {
   return null;
 };
 
+const parseDateTextToDate = (dateStr: string): Date => {
+  if (!dateStr.trim()) return new Date();
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return new Date(year, month, day);
+    }
+  }
+  return new Date();
+};
+
+const formatDateToDDMMYYYY = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const CATEGORIES = [
+  { id: '3334f0da-b7ce-4c9d-bc26-d0ae0374fed1', name: 'Groceries' },
+  { id: '6644910b-b733-47b7-85f9-48d0ca6fc86a', name: 'Dining' },
+  { id: 'ba621ad1-a786-44c6-ae6e-13f53380a75c', name: 'Utilities' },
+  { id: 'ef84449d-36e0-4df3-892f-aff668c051c9', name: 'Transportation' },
+  { id: '04546ff9-bb72-4786-825d-85583aa58f49', name: 'Entertainment' },
+  { id: 'efd8855d-a6c5-45ce-9c11-8025c6cb8c89', name: 'Electronics' },
+  { id: '83043609-6e75-4d93-82b9-c439deec42d2', name: 'Shopping' },
+  { id: '60018b6c-0aef-4f3b-ad68-6a9035676df2', name: 'Healthcare' },
+  { id: 'a1cb7d86-f8bb-4e43-a747-e551f4efcf74', name: 'Education' },
+  { id: 'e71537dc-c15c-4875-8b50-b2b7c5378be5', name: 'Travel' },
+  { id: '0fb1ddb0-d3a3-44d6-8602-363edbc78959', name: 'Home & Furniture' },
+  { id: '64a265f6-617f-4643-a753-0aac2f3df3e9', name: 'Fashion' },
+  { id: '3aa49dcc-74ee-448e-8425-cecef36265d7', name: 'Insurance' },
+  { id: 'aea62965-dc00-4418-8290-3bdc33f1fd1e', name: 'Business' },
+  { id: 'e017f7ac-9932-44cb-bceb-b01fe171fa62', name: 'Subscription' },
+  { id: 'f27c6346-1d5e-4da4-945a-a70b99c431f0', name: 'Pet Care' },
+  { id: 'ae01487b-2a6e-4438-b018-7fb6005dfbde', name: 'Gifts' },
+  { id: '64f833b5-6566-4e49-939d-98bd63b845fb', name: 'Taxes' },
+  { id: 'b9bfcee8-6d48-4e17-9c07-b76fc4660e40', name: 'Others' },
+];
+
 export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) => {
   // Required fields
   const [billName, setBillName] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billDate, setBillDate] = useState('');
 
+  // Date picker visibility states
+  const [showPurchasePicker, setShowPurchasePicker] = useState(false);
+  const [showWarrantyPicker, setShowWarrantyPicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
+
   // Optional backend fields
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [taxAmount, setTaxAmount] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
-  const [billCategory, setBillCategory] = useState('Other');
+  const [billCategory, setBillCategory] = useState('b9bfcee8-6d48-4e17-9c07-b76fc4660e40'); // default to Others UUID
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [billNotes, setBillNotes] = useState('');
 
   // Warranty states
@@ -227,7 +277,7 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
       bill_status: 'DRAFT',
       warranty_until: isoWarrantyDate,
       notes: billNotes.trim() || undefined,
-      category_id: null, // to be mapped by backend or linked later
+      category_id: billCategory,
       bill_items: products.length
         ? products.map((p) => ({
             item_name: p.itemName,
@@ -252,7 +302,7 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
         setTaxAmount('');
         setDiscountAmount('');
         setPaymentMethod('UPI');
-        setBillCategory('Other');
+        setBillCategory('b9bfcee8-6d48-4e17-9c07-b76fc4660e40');
         setBillNotes('');
         setHasWarranty(false);
         setWarrantyUntil('');
@@ -314,14 +364,72 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
               </View>
               <View style={styles.col}>
                 <Text style={styles.fieldLabel}>Purchase Date *</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#BBB"
-                  value={billDate}
-                  onChangeText={setBillDate}
-                />
+                <TouchableOpacity
+                  style={styles.dateSelector}
+                  onPress={() => {
+                    const current = parseDateTextToDate(billDate);
+                    setTempDate(current);
+                    setShowPurchasePicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateSelectorText, !billDate && styles.placeholderText]}>
+                    {billDate || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#888" />
+                </TouchableOpacity>
               </View>
+
+              {/* Purchase Date Picker - Android */}
+              {Platform.OS === 'android' && showPurchasePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowPurchasePicker(false);
+                    if (selectedDate && event.type !== 'dismissed') {
+                      setBillDate(formatDateToDDMMYYYY(selectedDate));
+                    }
+                  }}
+                />
+              )}
+
+              {/* Purchase Date Picker - iOS Modal */}
+              {Platform.OS === 'ios' && (
+                <Modal
+                  visible={showPurchasePicker}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => setShowPurchasePicker(false)}
+                >
+                  <View style={styles.iosModalOverlay}>
+                    <View style={styles.iosModalContainer}>
+                      <View style={styles.iosModalHeader}>
+                        <TouchableOpacity onPress={() => setShowPurchasePicker(false)}>
+                          <Text style={styles.iosModalCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setBillDate(formatDateToDDMMYYYY(tempDate));
+                            setShowPurchasePicker(false);
+                          }}
+                        >
+                          <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <DateTimePicker
+                        value={tempDate}
+                        mode="date"
+                        display="spinner"
+                        onChange={(event, selectedDate) => {
+                          if (selectedDate) setTempDate(selectedDate);
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Modal>
+              )}
             </View>
 
             {/* Products Section */}
@@ -481,13 +589,15 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
               </View>
               <View style={styles.col}>
                 <Text style={styles.fieldLabel}>Category</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="e.g. Electronics, Food"
-                  placeholderTextColor="#BBB"
-                  value={billCategory}
-                  onChangeText={setBillCategory}
-                />
+                <TouchableOpacity
+                  style={styles.dateSelector}
+                  onPress={() => setShowCategoryModal(true)}
+                >
+                  <Text style={styles.dateSelectorText}>
+                    {CATEGORIES.find((c) => c.id === billCategory)?.name || 'Others'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#888" />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -563,14 +673,72 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
             {/* {hasWarranty && (
               <View style={{ marginTop: 8 }}>
                 <Text style={styles.fieldLabel}>Warranty Expiration Date *</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="DD/MM/YYYY"
-                  placeholderTextColor="#BBB"
-                  value={warrantyUntil}
-                  onChangeText={setWarrantyUntil}
-                />
+                <TouchableOpacity
+                  style={styles.dateSelector}
+                  onPress={() => {
+                    const current = parseDateTextToDate(warrantyUntil);
+                    setTempDate(current);
+                    setShowWarrantyPicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateSelectorText, !warrantyUntil && styles.placeholderText]}>
+                    {warrantyUntil || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#888" />
+                </TouchableOpacity>
               </View>
+            )} */}
+
+            {/* Warranty Date Picker - Android */}
+            {/* {Platform.OS === 'android' && showWarrantyPicker && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowWarrantyPicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    setWarrantyUntil(formatDateToDDMMYYYY(selectedDate));
+                  }
+                }}
+              />
+            )} */}
+
+            {/* Warranty Date Picker - iOS Modal */}
+            {/* {Platform.OS === 'ios' && (
+              <Modal
+                visible={showWarrantyPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowWarrantyPicker(false)}
+              >
+                <View style={styles.iosModalOverlay}>
+                  <View style={styles.iosModalContainer}>
+                    <View style={styles.iosModalHeader}>
+                      <TouchableOpacity onPress={() => setShowWarrantyPicker(false)}>
+                        <Text style={styles.iosModalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setWarrantyUntil(formatDateToDDMMYYYY(tempDate));
+                          setShowWarrantyPicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setTempDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
             )} */}
 
             <Text style={styles.fieldLabel}>Notes</Text>
@@ -601,6 +769,56 @@ export const ManualEntryModal = ({ visible, onClose }: ManualEntryModalProps) =>
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
+
+      {/* Category Dropdown Modal */}
+      <Modal
+        visible={showCategoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCategoryModal(false)}
+      >
+        <View style={styles.iosModalOverlay}>
+          <View style={[styles.iosModalContainer, { maxHeight: '65%' }]}>
+            <View style={styles.iosModalHeader}>
+              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                <Text style={styles.iosModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Select Category</Text>
+              <View style={{ width: 60 }} />
+            </View>
+            <ScrollView contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16 }}>
+              {CATEGORIES.map((cat) => {
+                const isSelected = billCategory === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.categorySelectItem,
+                      isSelected && styles.categorySelectItemActive,
+                    ]}
+                    onPress={() => {
+                      setBillCategory(cat.id);
+                      setShowCategoryModal(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.categorySelectText,
+                        isSelected && styles.categorySelectTextActive,
+                      ]}
+                    >
+                      {cat.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color="#4B65E4" style={{ marginLeft: 'auto' }} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -776,4 +994,65 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   submitBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  
+  dateSelector: {
+    height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
+    borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
+    backgroundColor: '#FAFAFA', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  dateSelectorText: { fontSize: 15, color: '#1A1A1A' },
+  placeholderText: { color: '#BBB' },
+  
+  iosModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  iosModalContainer: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 30,
+  },
+  iosModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  iosModalCancelText: {
+    color: '#E14B4B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  iosModalConfirmText: {
+    color: '#4B65E4',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  categorySelectItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: '#F0F0F0',
+    backgroundColor: '#FAFAFA',
+  },
+  categorySelectItemActive: {
+    borderColor: '#4B65E4',
+    backgroundColor: '#EEF2FF',
+  },
+  categorySelectText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  categorySelectTextActive: {
+    fontWeight: '700',
+    color: '#4B65E4',
+  },
 });

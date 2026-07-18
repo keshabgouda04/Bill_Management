@@ -6,7 +6,7 @@ import { ProfileSetupScreen, SplashScreen } from '../modules/auth';
 import { ProfileScreen } from '../modules/profile';
 import { CategoriesScreen } from '../modules/categories';
 import { useGetProfileDetails } from '../services/query/profile/profile';
-import { BillDetailsScreen, ViewBillsScreen } from '../modules/bills';
+import { BillDetailsScreen, ViewBillsScreen, BillReviewScreen } from '../modules/bills';
 
 export type AppStackParamList = {
   ProfileSetup: undefined;
@@ -15,6 +15,11 @@ export type AppStackParamList = {
   Categories: undefined;
   ViewBills: undefined;
   BillDetails: { billId: string };
+  BillReview: {
+    fileUri: string;
+    fileName: string;
+    fileType: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -44,6 +49,7 @@ export default function AppNavigator() {
       <Stack.Screen name="Categories" component={CategoriesScreen} />
       <Stack.Screen name="ViewBills" component={ViewBillsScreen} />
       <Stack.Screen name="BillDetails" component={BillDetailsScreen} />
+      <Stack.Screen name="BillReview" component={BillReviewScreen} />
     </Stack.Navigator>
   );
 }

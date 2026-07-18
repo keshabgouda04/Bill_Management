@@ -40,6 +40,13 @@ export interface Bill {
   image_url?: Nullable<string>;
   receipt_url?: Nullable<string>;
   file_url?: Nullable<string>;
+  category?: Nullable<{
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    description: string;
+  }>;
 }
 
 export interface BillDetail extends Bill {

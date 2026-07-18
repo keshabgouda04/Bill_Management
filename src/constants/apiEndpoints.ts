@@ -7,4 +7,7 @@ export const API_URL = {
     CREATE: '/api/v1/bills',
     DETAIL:'/api/v1/bills',
   },
+  ATTACHMENTS: {
+    CREATE: '/api/v1/attachments',
+  },
 };
