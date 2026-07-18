@@ -10,6 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AppStackParamList } from '../../../navigation/AppNavigator';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
@@ -30,6 +33,7 @@ import {
 } from '../components';
 
 export default function DashboardScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data } = useGetProfileDetails();
   const profile = data?.profile;
 
@@ -53,7 +57,11 @@ export default function DashboardScreen() {
       });
       if (!result.canceled && result.assets?.length > 0) {
         const file = result.assets[0];
-        Alert.alert('File Selected', `"${file.name}" ready to upload.`);
+        navigation.navigate('BillReview', {
+          fileUri: file.uri,
+          fileName: file.name || 'uploaded_bill.pdf',
+          fileType: file.mimeType || 'application/pdf',
+        });
       }
     } catch {
       Alert.alert('Error', 'Could not open file picker.');
@@ -74,7 +82,12 @@ export default function DashboardScreen() {
         quality: 0.9,
       });
       if (!result.canceled && result.assets?.length > 0) {
-        Alert.alert('Scan Captured', 'Bill scanned successfully! Processing with OCR...');
+        const file = result.assets[0];
+        navigation.navigate('BillReview', {
+          fileUri: file.uri,
+          fileName: file.fileName || 'scanned_bill.jpg',
+          fileType: file.mimeType || 'image/jpeg',
+        });
       }
     } catch {
       Alert.alert('Error', 'Could not open camera.');
