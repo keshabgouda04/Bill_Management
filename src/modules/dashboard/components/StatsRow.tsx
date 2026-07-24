@@ -1,13 +1,16 @@
 import React from 'react';
 import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
-import { useGetBills } from '../../bills/api/billsApi';
+import { useGetBillsInfinite } from '../../bills/api/billsApi';
 
 export const StatsRow = () => {
-  const { data, isLoading } = useGetBills();
-  const bills = data?.data?.bills || [];
+  const { data, isLoading } = useGetBillsInfinite(10);
+  const bills = data?.pages.flatMap((page) => page.data?.bills || []) || [];
  
-  // 1. Total Bills
-  const totalBills = bills.length;
+  const serverStats = data?.pages[0]?.data?.stats;
+  const serverPagination = data?.pages[0]?.data?.pagination;
+
+  // 1. Total Bills (server pagination total or local fallback)
+  const totalBills = serverPagination?.total ?? bills.length;
   const now = new Date();
   const thisMonthBills = bills.filter((b) => {
     const d = new Date(b.purchase_date);
@@ -16,7 +19,7 @@ export const StatsRow = () => {
   const thisMonthCount = thisMonthBills.length;
 
   // 2. Active Warranties & Expiring
-  let activeWarrantiesCount = 0;
+  let localActiveWarrantiesCount = 0;
   let expiringSoonCount = 0;
   const nowMs = Date.now();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
@@ -31,7 +34,7 @@ export const StatsRow = () => {
 
         const diffTime = expiryDate.getTime() - nowMs;
         if (diffTime > 0) {
-          activeWarrantiesCount++;
+          localActiveWarrantiesCount++;
           if (diffTime <= thirtyDaysMs) {
             expiringSoonCount++;
           }
@@ -39,17 +42,16 @@ export const StatsRow = () => {
       }
     });
   });
+  const activeWarrantiesCount = serverStats?.activeWarrantyCount ?? localActiveWarrantiesCount;
 
   // 3. Categories
   const categoriesSet = new Set<string>();
   bills.forEach((b) => {
-    // console.log(b.category_id,"category_id")
     if (b.category_id) {
       categoriesSet.add(b.category_id);
     }
   });
-  const uniqueCategories = categoriesSet.size || 1;
-  console.log("uniqueCategories",categoriesSet.size);
+  const uniqueCategories = serverStats?.activeCategoryCount ?? (categoriesSet.size || 1);
 
   // 4. Storage (scanned receipts estimation)
   const scannedCount = bills.filter((b) => b.photo_url || b.image_url || b.receipt_url || b.file_url).length;

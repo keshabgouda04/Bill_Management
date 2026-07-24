@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -10,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,6 +21,10 @@ import type { AppStackParamList } from '../../../navigation/AppNavigator';
 import { BillDetail, useGetBillDetails, useDeleteBill } from '../api/billsApi';
 import { BILL_STATUS, PAYMENT_STATUS } from '../constants/billStatus';
 import { formatAmount, formatDate, getPhotoUri, getWarrantyDays } from '../utils/billUtils';
+import * as FileSystem from 'expo-file-system/legacy';
+import { StorageAccessFramework } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { getAttachmentDownloadUrl } from '../../../services/attachmentService';
 import InfoRow from '../components/InfoRow';
 import EditBillModal from '../components/EditBillModal';
 
@@ -29,16 +34,84 @@ type BillDetailsRoute = RouteProp<AppStackParamList, 'BillDetails'>;
 export default function BillDetailsScreen() {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<BillDetailsRoute>();
+  const { width, height } = Dimensions.get('window');
   const { billId } = route.params;
 
   const { data, isLoading, isError, refetch } = useGetBillDetails(billId);
   const deleteBillMutation = useDeleteBill();
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const bill = data?.data.bill;
-  console.log("Bilsss======>",bill)
+  console.log("Bilsss======>", bill)
   const photoUri = useMemo(() => (bill ? getPhotoUri(bill) : null), [bill]);
+
+  const handleDownloadAttachment = async (attachmentId: string, fileName: string) => {
+    if (downloadingId) return;
+
+    try {
+      setDownloadingId(attachmentId);
+      
+      const res = await getAttachmentDownloadUrl(attachmentId);
+      if (!res.success || !res.data.download_url) {
+        Alert.alert('Download Error', 'Could not retrieve download link.');
+        setDownloadingId(null);
+        return;
+      }
+
+      const downloadUrl = res.data.download_url;
+      // Sanitize the filename to prevent local filesystem write errors
+      const cleanFileName = fileName.replace(/\s+/g, '_');
+      const localUri = FileSystem.cacheDirectory + cleanFileName;
+
+      // Download directly from R2 securely in background
+      const downloadRes = await FileSystem.downloadAsync(downloadUrl, localUri);
+      
+      setDownloadingId(null);
+
+      // On Android, use StorageAccessFramework to prompt a folder picker ("Save As" dialog)
+      if (Platform.OS === 'android') {
+        const mime = cleanFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
+        
+        // Request directory permission (user chooses where to save it)
+        const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permissions.granted) {
+          Alert.alert('Save Cancelled', 'Permission was not granted to save the file.');
+          return;
+        }
+
+        // Create the file in the selected directory
+        const fileUri = await StorageAccessFramework.createFileAsync(
+          permissions.directoryUri,
+          cleanFileName,
+          mime
+        );
+
+        // Read downloaded cache file as base64 and write it to SAF file
+        const base64 = await FileSystem.readAsStringAsync(downloadRes.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        Alert.alert('Success', `Attachment saved successfully to your folder.`);
+      } else {
+        // On iOS, Sharing.shareAsync is the standard way to save to Files app
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadRes.uri);
+        } else {
+          Alert.alert('Download Complete', `File saved to cache as ${cleanFileName}.`);
+        }
+      }
+    } catch (error: any) {
+      setDownloadingId(null);
+      console.error('Failed to download attachment:', error);
+      Alert.alert('Download Error', error.message || 'Failed to download attachment.');
+    }
+  };
   const warrantyDays = useMemo(() => getWarrantyDays(bill?.warranty_until), [bill?.warranty_until]);
 
   const handleShare = async () => {
@@ -50,6 +123,12 @@ export default function BillDetailsScreen() {
   };
 
   const handleDownload = () => {
+    if (bill && bill.attachments && bill.attachments.length > 0) {
+      const att = bill.attachments[0];
+      handleDownloadAttachment(att.id, att.file_name);
+      return;
+    }
+
     if (!photoUri) {
       Alert.alert('No file available', 'This bill does not have an attached photo or document.');
       return;
@@ -86,18 +165,18 @@ export default function BillDetailsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#0052CC" />
           <Text style={styles.loadingText}>Fetching bill details...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (isError || !bill) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={styles.safeArea}>
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
           <Text style={styles.errorText}>Failed to load bill details.</Text>
@@ -105,14 +184,14 @@ export default function BillDetailsScreen() {
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const status = PAYMENT_STATUS[bill.payment_status] ?? PAYMENT_STATUS.UNPAID;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <View style={styles.safeArea}>
       <StatusBar style="dark" />
 
       <View style={styles.header}>
@@ -123,7 +202,10 @@ export default function BillDetailsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: Math.round(height * 0.06) }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.summaryCard}>
           <View style={styles.billIcon}>
             <Ionicons name="receipt-outline" size={24} color="#0052CC" />
@@ -258,7 +340,51 @@ export default function BillDetailsScreen() {
               <Text style={styles.productEmptyHint}>Add products to track warranty reminders</Text>
             </View>
           )}
-         </View>
+        </View>
+
+        {/* Attachments Section */}
+        {bill.attachments && bill.attachments.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Attachments</Text>
+              <Text style={styles.sectionSubtitle}>({bill.attachments.length} file{bill.attachments.length > 1 ? 's' : ''})</Text>
+            </View>
+
+            {bill.attachments.map((att: any) => {
+              const isPdf = att.file_name.toLowerCase().endsWith('.pdf');
+              const isDownloading = downloadingId === att.id;
+
+              return (
+                <View key={att.id} style={styles.attachmentItemRow}>
+                  <Ionicons
+                    name={isPdf ? 'document-text' : 'image'}
+                    size={24}
+                    color="#0052CC"
+                  />
+                  <View style={styles.attachmentInfo}>
+                    <Text style={styles.attachmentName} numberOfLines={1}>
+                      {att.file_name}
+                    </Text>
+                    <Text style={styles.attachmentMeta}>
+                      {att.file_size ? `${(att.file_size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown size'} • {isPdf ? 'PDF Document' : 'Image Scan'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.downloadIconBtn}
+                    onPress={() => handleDownloadAttachment(att.id, att.file_name)}
+                    disabled={isDownloading}
+                  >
+                    {isDownloading ? (
+                      <ActivityIndicator size="small" color="#0052CC" />
+                    ) : (
+                      <Ionicons name="download-outline" size={20} color="#0052CC" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
 
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionButton} onPress={handleDownload}>
@@ -292,11 +418,46 @@ export default function BillDetailsScreen() {
         bill={bill}
         onClose={() => setIsEditModalVisible(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginBottom: 10,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  attachmentItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  attachmentInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  attachmentName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  attachmentMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  downloadIconBtn: {
+    padding: 8,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: '#F6F4FF',
@@ -305,6 +466,7 @@ const styles = StyleSheet.create({
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 10,
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
@@ -333,7 +495,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 28,
   },
   summaryCard: {
     flexDirection: 'row',

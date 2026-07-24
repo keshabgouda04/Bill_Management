@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,64 +81,70 @@ export default function LoginScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
         <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Top Logo */}
-          <Image
-            source={require('../../../assets/images/logo.jpg')}
-            style={styles.logo}
-          />
-
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>
-            Enter your phone number to continue
-          </Text>
-
-          {/* Phone Number Input */}
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Phone number</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={20} color="#666" style={styles.phoneIcon} />
-              <Text style={styles.countryCode}>+91</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="12345 67890"
-                placeholderTextColor="#999"
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={phoneNumber}
-                onChangeText={(text) => setPhoneNumber(text.replace(/[^0-9]/g, ''))}
-                editable={!loading}
-                autoFocus
-              />
-            </View>
-          </View>
-
-          {/* Primary Action Button */}
-          <LoginButton
-            title="Continue"
-            onPress={handleSendOtp}
-            loading={loading}
-          />
-
-          {/* OAuth Dividers & Buttons */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or continue with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.googleButton, loading && styles.disabledButton]}
-            onPress={handleGoogleLogin}
-            activeOpacity={0.8}
-            disabled={loading}
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
           >
-            <Ionicons name="logo-google" size={20} color="#DB4437" />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
+            {/* Top Logo */}
+            <Image
+              source={require('../../../assets/images/logo.jpg')}
+              style={styles.logo}
+            />
 
+            <Text style={styles.title}>Welcome back</Text>
+            <Text style={styles.subtitle}>
+              Enter your phone number to continue
+            </Text>
+
+            {/* Phone Number Input */}
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Phone number</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons name="call-outline" size={20} color="#666" style={styles.phoneIcon} />
+                <Text style={styles.countryCode}>+91</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="12345 67890"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={phoneNumber}
+                  onChangeText={(text) => setPhoneNumber(text.replace(/[^0-9]/g, ''))}
+                  editable={!loading}
+                  autoFocus
+                />
+              </View>
+            </View>
+
+            {/* Primary Action Button */}
+            <LoginButton
+              title="Continue"
+              onPress={handleSendOtp}
+              loading={loading}
+            />
+
+            {/* OAuth Dividers & Buttons */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.googleButton, loading && styles.disabledButton]}
+              onPress={handleGoogleLogin}
+              activeOpacity={0.8}
+              disabled={loading}
+            >
+              <Ionicons name="logo-google" size={20} color="#DB4437" />
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>

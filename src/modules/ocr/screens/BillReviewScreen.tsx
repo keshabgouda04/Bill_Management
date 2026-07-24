@@ -22,7 +22,7 @@ import WarrantyCard from '../components/WarrantyCard';
 import LineItemsCard from '../components/LineItemsCard';
 import AmountsSummaryCard from '../components/AmountsSummaryCard';
 
-import { useCreateBill } from '../api/billsApi';
+import { useCreateBill } from '../../bills/api/billsApi';
 import type { AppStackParamList } from '../../../navigation/AppNavigator';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'BillReview'>;
@@ -76,7 +76,11 @@ export default function BillReviewScreen() {
   // General Bill States
   const [purchaseLocation, setPurchaseLocation] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(formatDateToDDMMYYYY(new Date()));
+  const [purchaseDate, setPurchaseDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return formatDateToDDMMYYYY(d);
+  });
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [billCategory, setBillCategory] = useState('b9bfcee8-6d48-4e17-9c07-b76fc4660e40'); // default to Others UUID
   const [notes, setNotes] = useState('');
@@ -232,6 +236,11 @@ export default function BillReviewScreen() {
       return;
     }
 
+    if (!invoiceNumber.trim()) {
+      Alert.alert('Required Info', 'Please enter invoice number.');
+      return;
+    }
+
     const isoPurchaseDate = parseDateToISO(purchaseDate);
     if (!isoPurchaseDate) {
       Alert.alert('Invalid Date', 'Please enter purchase date in DD/MM/YYYY format.');
@@ -253,7 +262,7 @@ export default function BillReviewScreen() {
 
     const payload = {
       purchase_location: purchaseLocation.trim(),
-      invoice_number: invoiceNumber.trim() || undefined,
+      invoice_number: invoiceNumber.trim(),
       purchase_date: isoPurchaseDate,
       subtotal: subtotal || finalTotalAmount,
       tax_amount: taxAmount || undefined,

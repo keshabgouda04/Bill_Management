@@ -41,6 +41,14 @@ export const postCreateBill = async (data: CreateBillPayload): Promise<CreateBil
   return api.post<CreateBillResponse>(API_URL.BILLS.CREATE, data);
 };
 
+export const postCreateManualBill = async (formData: FormData): Promise<CreateBillResponse> => {
+  return api.post<CreateBillResponse>(API_URL.BILLS.CREATE_MANUAL, formData, {
+    headers: {
+      'Content-Type': undefined,
+    },
+  });
+};
+
 export const useCreateBill = () => {
   const queryClient = useQueryClient();
 
@@ -48,6 +56,27 @@ export const useCreateBill = () => {
     mutationFn: postCreateBill,
     onSuccess: () => {
       // Invalidate and refetch the bills lists
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+    },
+  });
+};
+
+export const useCreateManualBill = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: postCreateManualBill,
+    onSuccess: (response) => {
+      const createdBill = response?.data?.bill;
+      if (createdBill && createdBill.id) {
+        queryClient.setQueryData(['bills', createdBill.id], {
+          success: true,
+          message: 'Bill fetched successfully',
+          data: {
+            bill: createdBill,
+          },
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['bills'] });
     },
   });

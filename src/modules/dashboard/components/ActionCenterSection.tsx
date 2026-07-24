@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../../navigation/AppNavigator';
-import { useGetBills } from '../../bills/api/billsApi';
+import { useGetBills, useGetBillsInfinite } from '../../bills/api/billsApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 type Nav = NativeStackNavigationProp<AppStackParamList>;
@@ -50,9 +50,9 @@ const getExpiryConfig = (diffDays: number) => {
 
 export const ActionCenterSection = () => {
   const navigation = useNavigation<Nav>();
-  const { data, isLoading } = useGetBills();
+  const { data, isLoading } = useGetBillsInfinite(10);
 
-  const bills = data?.data?.bills || [];
+  const bills = data?.pages.flatMap((page) => page.data?.bills || []) || [];
   const now = Date.now();
 
   interface ExpiringItem {
@@ -82,7 +82,7 @@ export const ActionCenterSection = () => {
         const diffTime = expiryDate.getTime() - now;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays > 0) {
+        if (diffDays > 0 && diffDays <= 7) {
           const emoji = getEmojiIcon(item.item_name);
           const cfg = getExpiryConfig(diffDays);
           expiringItems.push({
@@ -118,7 +118,10 @@ export const ActionCenterSection = () => {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.actionCenterRow}
+      contentContainerStyle={[
+        styles.actionCenterRow,
+        expiringItems.length <= 1 && { justifyContent: 'center', paddingHorizontal: 0 }
+      ]}
     >
       {expiringItems.length > 0 ? (
         expiringItems.map((item) => (
@@ -166,7 +169,12 @@ export const ActionCenterSection = () => {
 };
 
 const styles = StyleSheet.create({
-  actionCenterRow: { gap: 14, paddingVertical: 8, paddingHorizontal: 16 },
+  actionCenterRow: {
+    flexGrow: 1,
+    gap: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+  },
   actionCard: {
     width: SCREEN_WIDTH * 0.72, backgroundColor: '#FFF', borderRadius: 20,
     padding: 16, borderWidth: 1, borderColor: '#F0F0F0',
@@ -182,8 +190,7 @@ const styles = StyleSheet.create({
   cardActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 16, alignSelf: 'flex-start' },
   cardActionText: { fontSize: 13, fontWeight: '600' },
   loadingContainer: {
-    width: SCREEN_WIDTH - 32,
-    marginHorizontal: 16,
+    width: '100%',
     height: 140,
     backgroundColor: '#FFF',
     borderRadius: 20,

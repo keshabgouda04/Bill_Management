@@ -4,7 +4,7 @@ import { SectionHeader } from '../../../components/common/SectionHeader';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../../navigation/AppNavigator';
-import { useGetBills } from '../../bills/api/billsApi';
+import { useGetBills, useGetBillsInfinite } from '../../bills/api/billsApi';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
 
@@ -32,9 +32,9 @@ const CATEGORY_META: Record<string, { emoji: string; color: string }> = {
 
 export const CategoriesSection = () => {
   const navigation = useNavigation<Nav>();
-  const { data } = useGetBills();
-  
-  const bills = data?.data?.bills || [];
+  const { data } = useGetBillsInfinite(10);
+
+  const bills = data?.pages.flatMap((page) => page.data?.bills || []) || [];
 
   // Group bills by category name and sum their total amount dynamically
   const topCategories = useMemo(() => {

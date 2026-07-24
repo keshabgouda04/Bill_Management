@@ -8,6 +8,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+const sanitizePrice = (text: string): string => {
+  return text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+};
+
 interface AmountsSummaryCardProps {
   subtotal: number;
   taxAmount: number;
@@ -50,7 +54,7 @@ export default function AmountsSummaryCard({
         <TextInput
           style={styles.discountInput}
           value={discountAmount}
-          onChangeText={setDiscountAmount}
+          onChangeText={(text) => setDiscountAmount(sanitizePrice(text))}
           keyboardType="numeric"
           placeholder="0"
         />
@@ -67,7 +71,7 @@ export default function AmountsSummaryCard({
             <TextInput
               style={styles.totalInput}
               value={manualTotalAmount}
-              onChangeText={setManualTotalAmount}
+              onChangeText={(text) => setManualTotalAmount(sanitizePrice(text))}
               keyboardType="numeric"
               autoFocus
             />

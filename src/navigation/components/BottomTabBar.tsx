@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, Animated, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, Text, View, Animated, Pressable, Keyboard, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import * as ImagePicker from 'expo-image-picker';
+
 
 // ─── Animated Tab Item ───────────────────────────────────────────────────────
 
@@ -72,7 +74,7 @@ const AnimatedAddButton = ({ onPress }: { onPress?: () => void }) => {
   return (
     <Pressable onPressIn={handlePressIn} onPressOut={handlePressOut}>
       <Animated.View style={[styles.tabAddBtn, { transform: [{ scale }] }]}>
-        <Ionicons name="add" size={28} color="#FFF" />
+        <Ionicons name="scan-outline" size={26} color="#FFF" />
       </Animated.View>
     </Pressable>
   );
@@ -80,69 +82,153 @@ const AnimatedAddButton = ({ onPress }: { onPress?: () => void }) => {
 
 // ─── Main Bottom Tab Bar Component ───────────────────────────────────────────
 
-const TAB_ITEMS = [
-  { id: 'home', icon: 'home', iconInactive: 'home-outline', label: 'Home' },
-  { id: 'bills', icon: 'document-text', iconInactive: 'document-text-outline', label: 'Bills' },
-  { id: 'alerts', icon: 'notifications', iconInactive: 'notifications-outline', label: 'Alerts' },
-  { id: 'profile', icon: 'person', iconInactive: 'person-outline', label: 'Profile' },
+const TAB_CONFIG = [
+  { name: 'Dashboard', id: 'home', icon: 'home', iconInactive: 'home-outline', label: 'Home' },
+  { name: 'ViewBills', id: 'bills', icon: 'document-text', iconInactive: 'document-text-outline', label: 'Bills' },
+  { name: 'Cards', id: 'cards', icon: 'card', iconInactive: 'card-outline', label: 'Cards' },
+  { name: 'Profile', id: 'profile', icon: 'person', iconInactive: 'person-outline', label: 'Profile' },
 ];
 
-export const BottomTabBar = () => {
+export const BottomTabBar = (props: Partial<BottomTabBarProps> & { onAddPress?: () => void }) => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
-  const [activeTab, setActiveTab] = useState('home');
+  const { state, navigation, onAddPress } = props;
+  const [isKeyboardVisible, setKeyboardVisible] = React.useState(false);
 
-  const handleTabPress = (tabId: string) => {
-    if (tabId === 'profile') {
-      navigation.navigate('Profile');
+  React.useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  if (isKeyboardVisible) {
+    return null;
+  }
+
+  const currentRouteName = state?.routes[state.index]?.name || 'Dashboard';
+
+  const handleTabPress = (routeName: string) => {
+    if (routeName === 'Cards' || routeName === 'Alerts') {
+      // Visiting card page is not ready yet - do not navigate to any page
       return;
     }
-    setActiveTab(tabId);
+    if (navigation && routeName) {
+      navigation.navigate(routeName);
+    }
+  };
+
+  const handleAddPress = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Camera access is needed to scan bills.');
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.9,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        const file = result.assets[0];
+        if (navigation) {
+          navigation.navigate('BillReview', {
+            fileUri: file.uri,
+            fileName: file.fileName || 'scanned_bill.jpg',
+            fileType: file.mimeType || 'image/jpeg',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Camera open error:', error);
+      Alert.alert('Error', 'Could not open camera.');
+    }
   };
 
   return (
     <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-      {TAB_ITEMS.slice(0, 2).map((tab) => (
-        <AnimatedTabItem
-          key={tab.id}
-          icon={activeTab === tab.id ? tab.icon : tab.iconInactive}
-          label={tab.label}
-          isActive={activeTab === tab.id}
-          onPress={() => handleTabPress(tab.id)}
-        />
-      ))}
+      {TAB_CONFIG.slice(0, 2).map((tab) => {
+        const isActive = currentRouteName === tab.name;
+        return (
+          <AnimatedTabItem
+            key={tab.id}
+            icon={isActive ? tab.icon : tab.iconInactive}
+            label={tab.label}
+            isActive={isActive}
+            onPress={() => handleTabPress(tab.name)}
+          />
+        );
+      })}
 
       {/* Center animated Add button */}
-      <AnimatedAddButton />
+      <AnimatedAddButton onPress={handleAddPress} />
 
-      {TAB_ITEMS.slice(2).map((tab) => (
-        <AnimatedTabItem
-          key={tab.id}
-          icon={activeTab === tab.id ? tab.icon : tab.iconInactive}
-          label={tab.label}
-          isActive={activeTab === tab.id}
-          onPress={() => handleTabPress(tab.id)}
-        />
-      ))}
+      {TAB_CONFIG.slice(2).map((tab) => {
+        const isActive = currentRouteName === tab.name;
+        return (
+          <AnimatedTabItem
+            key={tab.id}
+            icon={isActive ? tab.icon : tab.iconInactive}
+            label={tab.label}
+            isActive={isActive}
+            onPress={() => handleTabPress(tab.name)}
+          />
+        );
+      })}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-around', paddingHorizontal: 8, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 999,
   },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 3 },
-  tabLabel: { fontSize: 10, color: '#999', fontWeight: '500' },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    gap: 3,
+  },
+  tabLabel: {
+    fontSize: 10,
+    color: '#999',
+    fontWeight: '500',
+  },
   tabAddBtn: {
-    width: 54, height: 54, borderRadius: 27,
-    backgroundColor: '#4B65E4', justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#4B65E4', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 8, elevation: 8,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#4B65E4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#4B65E4',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
