@@ -1,6 +1,6 @@
 import { API_URL } from '../../../constants/apiEndpoints';
 import { api } from '../../../helper/axiosConfig';
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
 export type PaymentStatus = 'PAID' | 'UNPAID' | 'PARTIAL' | 'REFUNDED';
 export type BillStatus = 'DRAFT' | 'PROCESSED' | 'FLAGGED';
@@ -76,15 +76,30 @@ export interface BillDetail extends Bill {
   bill_items?: BillItem[];
 }
 
-interface BillsResponse {
+export interface Stats {
+  activeWarrantyCount: number;
+  activeCategoryCount: number;
+  totalAmountSum?: number;
+}
+
+export interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface BillsResponse {
   success: boolean;
   message: string;
   data: {
     bills: Bill[];
+    stats?: Stats;
+    pagination?: Pagination;
   };
 }
 
-interface BillDetailResponse {
+export interface BillDetailResponse {
   success: boolean;
   message: string;
   data: {
@@ -92,8 +107,10 @@ interface BillDetailResponse {
   };
 }
 
-export const fetchBills = async (): Promise<BillsResponse> => {
-  return api.get<BillsResponse>(API_URL.BILLS.LIST);
+export const fetchBills = async (page: number = 1, limit: number = 10): Promise<BillsResponse> => {
+  return api.get<BillsResponse>(API_URL.BILLS.LIST, {
+    params: { page, limit },
+  });
 };
 
 export const fetchBillById = async (
@@ -102,10 +119,10 @@ export const fetchBillById = async (
   return api.get<BillDetailResponse>(`${API_URL.BILLS.DETAIL}/${billId}`);
 };
 
-export const useBillsQueryOptions = () =>
+export const useBillsQueryOptions = (page: number = 1, limit: number = 10) =>
   queryOptions({
-    queryKey: ['bills'],
-    queryFn: fetchBills,
+    queryKey: ['bills', 'list', page, limit],
+    queryFn: () => fetchBills(page, limit),
     staleTime: 1000 * 60 * 2,
     retry: 1,
   });
@@ -119,6 +136,22 @@ export const useBillDetailsQueryOptions = (billId: string) =>
     enabled: Boolean(billId),
   });
 
-export const useGetBills = () => useQuery(useBillsQueryOptions());
+export const useGetBills = (page: number = 1, limit: number = 10) =>
+  useQuery(useBillsQueryOptions(page, limit));
+
+export const useGetBillsInfinite = (limit: number = 10) =>
+  useInfiniteQuery<BillsResponse>({
+    queryKey: ['bills', 'list', 'infinite', limit],
+    queryFn: ({ pageParam = 1 }) => fetchBills(pageParam as number, limit),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: BillsResponse) => {
+      const pagination = lastPage.data?.pagination;
+      if (pagination && pagination.page < pagination.totalPages) {
+        return pagination.page + 1;
+      }
+      return undefined;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
 
 export const useGetBillDetails = (billId: string) => useQuery(useBillDetailsQueryOptions(billId));

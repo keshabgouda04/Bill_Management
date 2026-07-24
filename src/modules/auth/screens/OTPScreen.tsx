@@ -7,6 +7,7 @@ import {
   Platform,
   Alert,
   Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,32 +54,39 @@ export default function OTPScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
         <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Top Logo */}
-          <Image
-            source={require('../../../assets/images/logo.jpg')}
-            style={styles.logo}
-          />
+          <ScrollView
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+          >
+            {/* Top Logo */}
+            <Image
+              source={require('../../../assets/images/logo.jpg')}
+              style={styles.logo}
+            />
 
-          <Text style={styles.title}>Verify Code</Text>
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to +91 {phoneNumber}
-          </Text>
+            <Text style={styles.title}>Verify Code</Text>
+            <Text style={styles.subtitle}>
+              Enter the 6-digit code sent to +91 {phoneNumber}
+            </Text>
 
-          <OTPInput
-            value={otpCode}
-            onChangeText={setOtpCode}
-            loading={loading}
-            onChangePhoneNumber={() => navigation.goBack()}
-          />
+            <OTPInput
+              value={otpCode}
+              onChangeText={setOtpCode}
+              loading={loading}
+              onChangePhoneNumber={() => navigation.goBack()}
+            />
 
-          <LoginButton
-            title="Verify Code"
-            onPress={handleVerifyOtp}
-            loading={loading}
-          />
+            <LoginButton
+              title="Verify Code"
+              onPress={handleVerifyOtp}
+              loading={loading}
+            />
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>

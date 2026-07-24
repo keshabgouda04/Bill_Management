@@ -19,6 +19,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BillItem } from '../api/billsApi';
 
+const sanitizePrice = (text: string): string => {
+  return text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+};
+
 interface EditProductModalProps {
   visible: boolean;
   onClose: () => void;
@@ -160,7 +164,7 @@ export default function EditProductModal({
                   placeholderTextColor="#BBB"
                   keyboardType="numeric"
                   value={productUnitPrice}
-                  onChangeText={setProductUnitPrice}
+                  onChangeText={(text) => setProductUnitPrice(sanitizePrice(text))}
                 />
               </View>
             </View>
@@ -221,7 +225,7 @@ export default function EditProductModal({
                   placeholderTextColor="#BBB"
                   keyboardType="numeric"
                   value={productTax}
-                  onChangeText={setProductTax}
+                  onChangeText={(text) => setProductTax(sanitizePrice(text))}
                 />
               </>
             )}

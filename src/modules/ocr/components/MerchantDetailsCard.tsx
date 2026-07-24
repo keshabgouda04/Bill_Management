@@ -58,6 +58,13 @@ const formatDateToDDMMYYYY = (date: Date): string => {
   return `${day}/${month}/${year}`;
 };
 
+const getYesterday = (): Date => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
 export default function MerchantDetailsCard({
   purchaseLocation,
   setPurchaseLocation,
@@ -88,7 +95,7 @@ export default function MerchantDetailsCard({
 
       <View style={styles.row}>
         <View style={styles.col}>
-          <Text style={styles.fieldLabel}>Invoice Number</Text>
+          <Text style={styles.fieldLabel}>Invoice Number *</Text>
           <TextInput
             style={styles.fieldInput}
             value={invoiceNumber}
@@ -115,12 +122,15 @@ export default function MerchantDetailsCard({
           value={(() => {
             const parts = purchaseDate.split('/');
             if (parts.length === 3) {
-              return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+              const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+              const maxD = getYesterday();
+              return d > maxD ? maxD : d;
             }
-            return new Date();
+            return getYesterday();
           })()}
           mode="date"
           display="default"
+          maximumDate={getYesterday()}
           onChange={(event, selectedDate) => {
             setShowPurchaseDatePicker(false);
             if (selectedDate) {

@@ -5,7 +5,11 @@ import {
   View,
   FlatList,
   TouchableOpacity,
+  TextInput,
   ActivityIndicator,
+  Dimensions,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,42 +17,133 @@ import { StatusBar } from 'expo-status-bar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AppStackParamList } from '../../../navigation/AppNavigator';
-import { useGetBills, Bill, PaymentStatus } from '../api/billsApi';
+import { useGetBillsInfinite, Bill, PaymentStatus } from '../api/billsApi';
+import { useSearchBillsInfinite } from '../../search';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { BillCard } from '../components/BillCard';
 
 type FilterType = 'ALL' | 'UPCOMING' | 'PAID' | 'OVERDUE';
 
 export default function ViewBillsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
-  const { data, isLoading, isError, refetch } = useGetBills();
+  const {
+    data: allBillsData,
+    isLoading: isAllBillsLoading,
+    isError,
+    refetch,
+    fetchNextPage: fetchNextPageAll,
+    hasNextPage: hasNextPageAll,
+    isFetchingNextPage: isFetchingNextPageAll,
+  } = useGetBillsInfinite(10);
   const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
-  const bills = data?.data?.bills || [];
-  
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
-  // Filter bills based on selected tab
-  const filteredBills = useMemo(() => {
-    switch (selectedFilter) {
-      case 'UPCOMING':
-        return bills.filter((b) => b.payment_status === 'PARTIAL');
-      case 'PAID':
-        return bills.filter((b) => b.payment_status === 'PAID');
-      case 'OVERDUE':
-        return bills.filter((b) => b.payment_status === 'UNPAID');
-      case 'ALL':
-      default:
-        return bills;
+  React.useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  let apiStatus: string | undefined = undefined;
+  if (selectedFilter === 'UPCOMING') apiStatus = 'PARTIAL';
+  else if (selectedFilter === 'PAID') apiStatus = 'PAID';
+  else if (selectedFilter === 'OVERDUE') apiStatus = 'UNPAID';
+
+  const {
+    data: searchData,
+    isLoading: isSearchLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSearchBillsInfinite(
+    debouncedSearchQuery,
+    undefined,
+    apiStatus,
+    2
+  );
+  const { width, height } = Dimensions.get('window');
+
+  const isQueryActive = searchQuery.trim().length > 0;
+
+  // Use API search results if searchQuery is active, otherwise paginated allBills list
+  const bills = useMemo(() => {
+    if (isQueryActive) {
+      return searchData?.pages.flatMap((page) => page.data?.bills || []) || [];
     }
-  }, [bills, selectedFilter]);
+    return allBillsData?.pages.flatMap((page) => page.data?.bills || []) || [];
+  }, [isQueryActive, searchData, allBillsData]);
+
+  // Filter bills based on selected tab and search query fallback
+  const filteredBills = useMemo(() => {
+    let list: Bill[] = [];
+
+    if (!isQueryActive) {
+      switch (selectedFilter) {
+        case 'UPCOMING':
+          list = bills.filter((b: Bill) => b.payment_status === 'PARTIAL');
+          break;
+        case 'PAID':
+          list = bills.filter((b: Bill) => b.payment_status === 'PAID');
+          break;
+        case 'OVERDUE':
+          list = bills.filter((b: Bill) => b.payment_status === 'UNPAID');
+          break;
+        case 'ALL':
+        default:
+          list = bills;
+          break;
+      }
+    } else {
+      list = bills;
+    }
+
+    // this function locally searched if the api does not return data
+    if (isQueryActive && !searchData) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((b: Bill) =>
+        (b.invoice_number && b.invoice_number.toLowerCase().includes(q)) ||
+        (b.purchase_location && b.purchase_location.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [bills, selectedFilter, searchQuery, searchData, isQueryActive]);
 
   // Calculations for summary strip
-  const totalBillsCount = filteredBills.length;
+  const serverPaginationTotal = allBillsData?.pages[0]?.data?.pagination?.total;
+  const serverStats = allBillsData?.pages[0]?.data?.stats;
+
+  const totalBillsCount = (!isQueryActive && selectedFilter === 'ALL' && typeof serverPaginationTotal === 'number')
+    ? serverPaginationTotal
+    : filteredBills.length;
+
   const totalAmount = useMemo(() => {
+    if (!isQueryActive && selectedFilter === 'ALL' && serverStats && typeof serverStats.totalAmountSum === 'number') {
+      return serverStats.totalAmountSum;
+    }
     return filteredBills.reduce((sum, b) => sum + b.total_amount, 0);
-  }, [filteredBills]);
+  }, [filteredBills, isQueryActive, selectedFilter, serverStats]);
 
   const handleBack = () => {
     navigation.goBack();
+  };
+
+  const toggleSearch = () => {
+    if (isSearchVisible) {
+      setSearchQuery('');
+    }
+    setIsSearchVisible(!isSearchVisible);
   };
 
   const getFilterStyle = (filter: FilterType) => {
@@ -59,7 +154,7 @@ export default function ViewBillsScreen() {
     return selectedFilter === filter ? styles.activeTabText : styles.inactiveTabText;
   };
 
-  if (isLoading) {
+  if (isAllBillsLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centered}>
@@ -95,14 +190,41 @@ export default function ViewBillsScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>View Bills</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <Ionicons name="search-outline" size={22} color="#1A1A1A" />
+          <TouchableOpacity
+            style={[styles.headerIcon, isSearchVisible && styles.headerIconActive]}
+            onPress={toggleSearch}
+          >
+            <Ionicons
+              name={isSearchVisible ? "close-outline" : "search-outline"}
+              size={22}
+              color={isSearchVisible ? "#0052CC" : "#1A1A1A"}
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerIcon}>
             <Ionicons name="options-outline" size={22} color="#1A1A1A" />
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Collapsible Search Input Bar */}
+      {isSearchVisible && (
+        <View style={styles.searchBarContainer}>
+          <Ionicons name="search-outline" size={18} color="#888" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by merchant or invoice number..."
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <Ionicons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
@@ -120,28 +242,61 @@ export default function ViewBillsScreen() {
       </View>
 
       {/* Bills List */}
-      <FlatList
-        data={filteredBills}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <BillCard
-            bill={item}
-            onPress={() => navigation.navigate('BillDetails', { billId: item.id })}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color="#CCC" />
-            <Text style={styles.emptyText}>No bills found under {selectedFilter.toLowerCase()}</Text>
-          </View>
-        }
-      />
+      {isQueryActive && isSearchLoading ? (
+        <View style={styles.bodyLoadingContainer}>
+          <ActivityIndicator size="large" color="#0052CC" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBills}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <BillCard
+              bill={item}
+              onPress={() => navigation.navigate('BillDetails', { billId: item.id })}
+            />
+          )}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.round(height * 0.27) }]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={64} color="#CCC" />
+              <Text style={styles.emptyText}>
+                {searchQuery.trim() ? 'No results found' : 'No bills here yet'}
+              </Text>
+              <Text style={[styles.emptyText, { fontSize: 13, marginTop: 6 }]}>
+                {searchQuery.trim()
+                  ? `No bills match your search "${searchQuery}"`
+                  : 'Upload a bill or select a different category to view details.'}
+              </Text>
+            </View>
+          }
+          onEndReached={() => {
+            if (isQueryActive) {
+              if (hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            } else {
+              if (hasNextPageAll && !isFetchingNextPageAll) {
+                fetchNextPageAll();
+              }
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            (isQueryActive ? isFetchingNextPage : isFetchingNextPageAll) ? (
+              <View style={styles.footerLoading}>
+                <ActivityIndicator size="small" color="#4B65E4" />
+              </View>
+            ) : null
+          }
+        />
+      )}
 
       {/* Summary Box */}
-      <View style={styles.summaryBox}>
-        <View style={styles.summaryItem}>
+      {!isKeyboardVisible && (
+        <View style={[styles.summaryBox, { bottom: Math.max(Math.round(height * 0.16)) }]}>
+          <View style={styles.summaryItem}>
           <Ionicons name="document-text-outline" size={20} color="#0052CC" style={styles.summaryIcon} />
           <View>
             <Text style={styles.summaryLabel}>Total Bills</Text>
@@ -153,9 +308,9 @@ export default function ViewBillsScreen() {
             <Text style={styles.summaryLabel}>Total Amount</Text>
             <Text style={styles.summaryValueAmount}>₹{totalAmount.toLocaleString('en-IN')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color="#0052CC" />
         </View>
       </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -190,6 +345,31 @@ const styles = StyleSheet.create({
   headerIcon: {
     marginLeft: 15,
     padding: 4,
+    borderRadius: 8,
+  },
+  headerIconActive: {
+    backgroundColor: '#E0E8FF',
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 15,
+    marginTop: 10,
+    marginBottom: 2,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#0052CC',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1A1A1A',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -305,6 +485,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#0052CC',
+  },
+  footerLoading: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bodyLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

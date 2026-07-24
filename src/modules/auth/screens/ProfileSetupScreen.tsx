@@ -8,7 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,9 @@ import { AppStackParamList } from '../../../navigation/AppNavigator';
 import { supabase } from '../../../helper/supabase';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
 import { useUpdateProfileDetails } from '../../../services/mutation/profile/profileSetup';
+import { useUploadAvatar } from '../../../services/mutation/profile/uploadAvatar';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import SplashScreen from './SplashScreen';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ProfileSetup'>;
@@ -26,6 +30,105 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   const { data } = useGetProfileDetails();
   const profile = data?.profile;
   const [showSplash, setShowSplash] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const uploadAvatarMutation = useUploadAvatar();
+
+  const handleEditAvatar = async () => {
+    Alert.alert(
+      'Profile Photo',
+      'Select a photo for your profile avatar.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: () => pickImage(true) },
+        { text: 'Choose from Gallery', onPress: () => pickImage(false) },
+      ]
+    );
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    try {
+      let result;
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Gallery permission is required to choose photos.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      }
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const lowerUri = uri.toLowerCase();
+      const isAllowedFormat = lowerUri.endsWith('.jpg') || 
+                              lowerUri.endsWith('.jpeg') || 
+                              lowerUri.endsWith('.png') || 
+                              lowerUri.endsWith('.webp') || 
+                              lowerUri.endsWith('.heic');
+
+      if (!isAllowedFormat) {
+        Alert.alert('Invalid File', 'Only JPEG, PNG, WEBP, and HEIC image formats are supported.');
+        return;
+      }
+
+      let fileSize = asset.fileSize;
+      if (!fileSize) {
+        const info = await FileSystem.getInfoAsync(uri);
+        if (info.exists) {
+          fileSize = info.size;
+        }
+      }
+
+      if (fileSize && fileSize > 10 * 1024 * 1024) {
+        Alert.alert('Invalid File', 'Image size exceeds the 10MB limit.');
+        return;
+      }
+
+      const formData = new FormData();
+      const ext = lowerUri.split('.').pop() || 'jpeg';
+      const fileName = `avatar.${ext}`;
+      const type = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+      formData.append('avatar', {
+        uri: uri,
+        name: fileName,
+        type: type,
+      } as any);
+
+      uploadAvatarMutation.mutate(formData, {
+        onSuccess: () => {
+          setAvatarError(false); // Reset error visibility state
+          Alert.alert('Success', 'Profile avatar updated successfully!');
+        },
+        onError: (err: any) => {
+          console.error('Avatar upload failed:', err);
+          Alert.alert('Upload Failed', err.message || 'Could not upload avatar. Please try again.');
+        },
+      });
+    } catch (e) {
+      console.error('Error selecting image:', e);
+      Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
 
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [phoneNumber, setPhoneNumber] = useState(profile?.phone || '');
@@ -145,14 +248,34 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           </Text>
 
           {/* Avatar */}
-          <View style={styles.avatarContainer}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleEditAvatar}
+            disabled={uploadAvatarMutation.isPending}
+            activeOpacity={0.85}
+          >
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person-outline" size={32} color="#666" />
+              {profile?.avatar_url && !avatarError ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatarImage}
+                  onError={() => setAvatarError(true)}
+                />
+              ) : (
+                <Ionicons name="person-outline" size={32} color="#666" />
+              )}
             </View>
-            <TouchableOpacity style={styles.editIconContainer}>
-              <Ionicons name="pencil" size={14} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+            
+            {uploadAvatarMutation.isPending ? (
+              <View style={styles.avatarUploadLoader}>
+                <ActivityIndicator size="small" color="#FFF" />
+              </View>
+            ) : (
+              <View style={styles.editIconContainer}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            )}
+          </TouchableOpacity>
 
           {/* Full Name Input */}
           <View style={[styles.inputWrapper, { zIndex: 2 }]}>
@@ -363,6 +486,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  avatarUploadLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputWrapper: {
     width: '100%',

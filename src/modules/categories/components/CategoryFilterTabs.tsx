@@ -32,12 +32,12 @@ export const CategoryFilterTabs = ({ selected, onSelect, tabs = DEFAULT_TABS }: 
   contentContainerStyle={styles.container}
 >
     {tabs.map(tab => {
-      const isActive = selected === tab.id;
+      const isActive = selected.toLowerCase() === tab.label.toLowerCase();
       return (
         <TouchableOpacity
           key={tab.id}
           style={[styles.tab, isActive ? styles.tabActive : styles.tabInactive]}
-          onPress={() => onSelect(tab.id)}
+          onPress={() => onSelect(tab.label)}
           activeOpacity={0.75}
         >
           <Text style={styles.emoji}>{tab.emoji}</Text>

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,8 +19,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
 import { supabase } from '../../../helper/supabase';
 import { SearchBar } from '../../../components/common/SearchBar';
-import { BottomTabBar } from '../../../navigation/components/BottomTabBar';
-import { ManualEntryModal } from '../../upload/components/ManualEntryModal';
 import {
   ActionCenterSection,
   QuickActions,
@@ -36,8 +35,6 @@ export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data } = useGetProfileDetails();
   const profile = data?.profile;
-
-  const [showManualModal, setShowManualModal] = useState(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -94,16 +91,16 @@ export default function DashboardScreen() {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log Out', style: 'destructive', onPress: async () => await supabase.auth.signOut() },
-      ]
-    );
-  };
+  // const handleLogout = () => {
+  //   Alert.alert(
+  //     'Log Out',
+  //     'Are you sure you want to log out?',
+  //     [
+  //       { text: 'Cancel', style: 'cancel' },
+  //       { text: 'Log Out', style: 'destructive', onPress: async () => await supabase.auth.signOut() },
+  //     ]
+  //   );
+  // };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -112,9 +109,17 @@ export default function DashboardScreen() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>U</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.profileCircle}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.profileText}>{profile?.full_name?.slice(0,1).toUpperCase()}</Text>
+            )}
+          </TouchableOpacity>
           <View style={{ marginLeft: 12 }}>
             <Text style={styles.greetingText}>{getGreeting()},</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -125,23 +130,29 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            activeOpacity={0.7}
+            onPress={() => Alert.alert('Notifications', 'No new alerts.')}
+          >
             <Ionicons name="notifications-outline" size={22} color="#1A1A1A" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButtonLogout} activeOpacity={0.7} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#FF4444" />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <SearchBar />
+        {/* ── Global Search Trigger ── */}
+        <SearchBar
+          placeholder="Search invoice #, store, category..."
+          onPress={() => navigation.navigate('Search')}
+        />
+
         <ActionCenterSection />
         <UploadBanner onPress={handleUploadBill} />
         <QuickActions
           onScan={handleScanBill}
           onUpload={handleUploadBill}
-          onManualEntry={() => setShowManualModal(true)}
+          onManualEntry={() => navigation.navigate('ManualEntry')}
         />
         <StatsRow />
         <RecentBillsSection />
@@ -153,15 +164,6 @@ export default function DashboardScreen() {
         {/* Bottom padding for tab bar */}
         <View style={{ height: 90 }} />
       </ScrollView>
-
-      {/* ── Manual Entry Modal ── */}
-      <ManualEntryModal
-        visible={showManualModal}
-        onClose={() => setShowManualModal(false)}
-      />
-
-      {/* ── Bottom Tab Bar ── */}
-      <BottomTabBar />
     </SafeAreaView>
   );
 }
@@ -180,6 +182,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#4B65E4', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   profileText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   greetingText: { fontSize: 13, color: '#999', fontWeight: '500' },

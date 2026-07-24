@@ -75,7 +75,7 @@ export const uploadAttachment = async (file: SelectedFile): Promise<Attachment> 
 
   // 2. Prepare multipart Form Data
   const formData = new FormData();
-  
+
   // React Native FormData expects an object with uri, name, and type for files
   formData.append('file', {
     uri: file.uri,

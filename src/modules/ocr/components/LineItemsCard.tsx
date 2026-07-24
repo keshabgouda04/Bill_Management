@@ -9,6 +9,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+const sanitizePrice = (text: string): string => {
+  return text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+};
+
 interface ProductItem {
   id: string;
   itemName: string;
@@ -128,7 +132,7 @@ export default function LineItemsCard({
               <TextInput
                 style={styles.inlineInput}
                 value={newProductPrice}
-                onChangeText={setNewProductPrice}
+                onChangeText={(text) => setNewProductPrice(sanitizePrice(text))}
                 keyboardType="numeric"
                 placeholder="0.00"
               />
@@ -138,7 +142,7 @@ export default function LineItemsCard({
               <TextInput
                 style={styles.inlineInput}
                 value={newProductTax}
-                onChangeText={setNewProductTax}
+                onChangeText={(text) => setNewProductTax(sanitizePrice(text))}
                 keyboardType="numeric"
                 placeholder="0"
               />
