@@ -19,8 +19,8 @@ export const useDeleteBill = () => {
     onSuccess: (_data, billId) => {
       // Remove the deleted bill's detail from cache so it doesn't trigger a 404 refetch
       queryClient.removeQueries({ queryKey: ['bills', billId] });
-      // Invalidate the list so it refreshes without the deleted bill
-      queryClient.invalidateQueries({ queryKey: ['bills'], exact: true });
+      // Invalidate all bill lists (infinite, filtered, etc.) so they refresh without the deleted bill
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
     },
   });
 };

@@ -82,7 +82,7 @@ export default function BillReviewScreen() {
     return formatDateToDDMMYYYY(d);
   });
   const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [billCategory, setBillCategory] = useState('b9bfcee8-6d48-4e17-9c07-b76fc4660e40'); // default to Others UUID
+  const [billCategory, setBillCategory] = useState('5085268a-da58-40a1-abfb-71f577bd4713'); // default to Others UUID
   const [notes, setNotes] = useState('');
   const [discountAmount, setDiscountAmount] = useState('0');
   const [manualTotalAmount, setManualTotalAmount] = useState('');

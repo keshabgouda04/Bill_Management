@@ -85,6 +85,7 @@ export default function ManualEntryScreen() {
     handleSubmit,
     isPending,
     setSelectedFile,
+    errors,
   } = useManualEntryForm(() => navigation.goBack());
 
   return (
@@ -105,40 +106,59 @@ export default function ManualEntryScreen() {
           {/* Required Fields Group */}
           <Text style={styles.sectionHeader}>Required Information</Text>
 
+          {errors?.form && (
+            <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>{errors.form}</Text>
+            </View>
+          )}
+
           <Text style={styles.fieldLabel}>Bill Name / Merchant *</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.billName ? styles.inputError : null]}
             placeholder="e.g. Reliance Digital, Apple Store"
             placeholderTextColor="#BBB"
             value={billName}
             onChangeText={setBillName}
           />
+          {errors?.billName && <Text style={styles.errorText}>{errors.billName}</Text>}
 
           <Text style={styles.fieldLabel}>Invoice / Bill Number *</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.invoiceNumber ? styles.inputError : null]}
             placeholder="e.g. INV-1002"
             placeholderTextColor="#BBB"
             value={invoiceNumber}
             onChangeText={setInvoiceNumber}
           />
+          {errors?.invoiceNumber && <Text style={styles.errorText}>{errors.invoiceNumber}</Text>}
+
+          <Text style={styles.fieldLabel}>Category *</Text>
+          <TouchableOpacity
+            style={[styles.dateSelector, errors?.billCategory ? styles.inputError : null]}
+            onPress={() => setShowCategoryModal(true)}
+          >
+            <Text style={[styles.dateSelectorText, !billCategory && styles.placeholderText]}>
+              {billCategory ? CATEGORIES.find((c) => c.id === billCategory)?.name : 'Select Category'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#888" />
+          </TouchableOpacity>
+          {errors?.billCategory && <Text style={styles.errorText}>{errors.billCategory}</Text>}
 
           <View style={styles.row}>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Total Amount (₹) *</Text>
               <TextInput
-                style={styles.fieldInput}
-                placeholder="e.g. 15490"
+                style={[styles.fieldInput, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                placeholder="Total Amount"
                 placeholderTextColor="#BBB"
-                keyboardType="numeric"
                 value={billAmount}
-                onChangeText={(text) => setBillAmount(sanitizePrice(text))}
+                editable={false}
               />
             </View>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Purchase Date *</Text>
               <TouchableOpacity
-                style={styles.dateSelector}
+                style={[styles.dateSelector, errors?.billDate ? styles.inputError : null]}
                 onPress={() => {
                   let current = parseDateTextToDate(billDate);
                   const maxDate = getYesterday();
@@ -155,6 +175,7 @@ export default function ManualEntryScreen() {
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#888" />
               </TouchableOpacity>
+              {errors?.billDate && <Text style={styles.errorText}>{errors.billDate}</Text>}
             </View>
 
             {/* Purchase Date Picker - Android */}
@@ -213,6 +234,9 @@ export default function ManualEntryScreen() {
 
           {/* Products Section */}
           <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Products</Text>
+          {errors?.products && (
+            <Text style={[styles.errorText, { marginBottom: 10, marginTop: -5 }]}>{errors.products}</Text>
+          )}
 
           <ProductList
             products={products}
@@ -238,50 +262,51 @@ export default function ManualEntryScreen() {
             showProductExtras={showProductExtras}
             setShowProductExtras={setShowProductExtras}
             onAddProduct={handleAddProduct}
+            errors={errors}
           />
 
           {/* Optional Fields Group */}
           <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Additional Details (Optional)</Text>
 
-          <Text style={styles.fieldLabel}>Category</Text>
-          <TouchableOpacity
-            style={[styles.dateSelector, { marginBottom: 12 }]}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            <Text style={styles.dateSelectorText}>
-              {CATEGORIES.find((c) => c.id === billCategory)?.name || 'Others'}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color="#888" />
-          </TouchableOpacity>
+
 
           <View style={styles.row}>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>
-                Tax Amount (₹){products.length > 0 ? ' (Auto)' : ''}
+                Tax Amount (₹) (Auto)
               </Text>
               <TextInput
                 style={[
                   styles.fieldInput,
-                  products.length > 0 && { backgroundColor: '#EAEAEA', color: '#666' }
+                  { backgroundColor: '#F3F4F6', color: '#6B7280' }
                 ]}
-                placeholder="e.g. 250"
+                placeholder="Total Tax"
                 placeholderTextColor="#BBB"
-                keyboardType="numeric"
                 value={taxAmount}
-                onChangeText={(text) => setTaxAmount(sanitizePrice(text))}
-                editable={products.length === 0}
+                editable={false}
               />
+              {errors?.taxAmount && <Text style={styles.errorText}>{errors.taxAmount}</Text>}
             </View>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Discount (₹)</Text>
               <TextInput
-                style={styles.fieldInput}
+                style={[
+                  styles.fieldInput,
+                  (discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount
+                    ? { borderColor: '#EF4444', borderWidth: 1 }
+                    : null
+                ]}
                 placeholder="e.g. 100"
                 placeholderTextColor="#BBB"
                 keyboardType="numeric"
                 value={discountAmount}
                 onChangeText={(text) => setDiscountAmount(sanitizePrice(text))}
               />
+              {((discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount) && (
+                <Text style={styles.errorText}>
+                  {errors?.discountAmount || 'Must be less than total'}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -386,6 +411,15 @@ const styles = StyleSheet.create({
     height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
     borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
     color: '#1A1A1A', backgroundColor: '#FAFAFA',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '500',
   },
   fieldInputMulti: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
 

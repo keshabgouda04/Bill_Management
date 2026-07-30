@@ -26,29 +26,29 @@ interface MerchantDetailsCardProps {
 
 const PAYMENT_METHODS = ['UPI', 'CARD', 'CASH', 'NET_BANKING'];
 const CATEGORY_KEYS = [
-  '3334f0da-b7ce-4c9d-bc26-d0ae0374fed1', // Groceries
-  '6644910b-b733-47b7-85f9-48d0ca6fc86a', // Dining
-  'ba621ad1-a786-44c6-ae6e-13f53380a75c', // Utilities
-  'ef84449d-36e0-4df3-892f-aff668c051c9', // Transportation
-  '04546ff9-bb72-4786-825d-85583aa58f49', // Entertainment
-  'efd8855d-a6c5-45ce-9c11-8025c6cb8c89', // Electronics
-  '83043609-6e75-4d93-82b9-c439deec42d2', // Shopping
-  '60018b6c-0aef-4f3b-ad68-6a9035676df2', // Healthcare
-  '0fb1ddb0-d3a3-44d6-8602-363edbc78959', // Home & Furniture
-  'b9bfcee8-6d48-4e17-9c07-b76fc4660e40', // Others
+  'd01eefad-a46d-44f2-92b5-7823b13cca97', // Groceries
+  'f61ab785-1e81-4f14-a9b1-7d3acdfc0552', // Dining
+  'aae8c96d-aefa-4b12-884d-3ce3ffcd7b22', // Utilities
+  'b5ee8097-2d1c-4aa6-a2a3-66a45b2d391c', // Transportation
+  '58969cd8-cdde-40d4-9fd9-d1251fc96e8e', // Entertainment
+  '1d4d9114-d91b-462b-bf01-6ded3119fe8d', // Electronics
+  '238c21e0-ab19-4cdc-a6bc-3d642b912eae', // Shopping
+  '58bcb17c-a844-4163-a6ee-3f90dc0515ca', // Healthcare
+  'ec065761-2805-4098-a1f9-cf6b6310e839', // Home & Furniture
+  '5085268a-da58-40a1-abfb-71f577bd4713', // Others
 ];
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
-  '3334f0da-b7ce-4c9d-bc26-d0ae0374fed1': { label: 'Groceries', emoji: '🛒' },
-  '6644910b-b733-47b7-85f9-48d0ca6fc86a': { label: 'Dining', emoji: '🍕' },
-  'ba621ad1-a786-44c6-ae6e-13f53380a75c': { label: 'Utilities', emoji: '🔌' },
-  'ef84449d-36e0-4df3-892f-aff668c051c9': { label: 'Transportation', emoji: '🚗' },
-  '04546ff9-bb72-4786-825d-85583aa58f49': { label: 'Entertainment', emoji: '🍿' },
-  'efd8855d-a6c5-45ce-9c11-8025c6cb8c89': { label: 'Electronics', emoji: '📱' },
-  '83043609-6e75-4d93-82b9-c439deec42d2': { label: 'Shopping', emoji: '🛍️' },
-  '60018b6c-0aef-4f3b-ad68-6a9035676df2': { label: 'Healthcare', emoji: '❤️' },
-  '0fb1ddb0-d3a3-44d6-8602-363edbc78959': { label: 'Home & Furniture', emoji: '🏠' },
-  'b9bfcee8-6d48-4e17-9c07-b76fc4660e40': { label: 'Others', emoji: '📦' },
+  'd01eefad-a46d-44f2-92b5-7823b13cca97': { label: 'Groceries', emoji: '🛒' },
+  'f61ab785-1e81-4f14-a9b1-7d3acdfc0552': { label: 'Dining', emoji: '🍕' },
+  'aae8c96d-aefa-4b12-884d-3ce3ffcd7b22': { label: 'Utilities', emoji: '🔌' },
+  'b5ee8097-2d1c-4aa6-a2a3-66a45b2d391c': { label: 'Transportation', emoji: '🚗' },
+  '58969cd8-cdde-40d4-9fd9-d1251fc96e8e': { label: 'Entertainment', emoji: '🍿' },
+  '1d4d9114-d91b-462b-bf01-6ded3119fe8d': { label: 'Electronics', emoji: '📱' },
+  '238c21e0-ab19-4cdc-a6bc-3d642b912eae': { label: 'Shopping', emoji: '🛍️' },
+  '58bcb17c-a844-4163-a6ee-3f90dc0515ca': { label: 'Healthcare', emoji: '❤️' },
+  'ec065761-2805-4098-a1f9-cf6b6310e839': { label: 'Home & Furniture', emoji: '🏠' },
+  '5085268a-da58-40a1-abfb-71f577bd4713': { label: 'Others', emoji: '📦' },
 };
 
 const formatDateToDDMMYYYY = (date: Date): string => {

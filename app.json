@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "Bill Management",
+    "name": "Wallely",
     "slug": "bill-management",
-    "scheme": "bill-management",
+    "scheme": "wallely",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.jpg",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.wallely",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logo.jpg",
+        "backgroundColor": "#132D5B"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -23,7 +23,16 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "expo-dev-client",
+      "@react-native-firebase/app",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ef3108d2-f498-4925-b032-fc49e83e947e"
+      }
+    }
   }
 }

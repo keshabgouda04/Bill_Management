@@ -44,7 +44,6 @@ export default function BillDetailsScreen() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const bill = data?.data.bill;
-  console.log("Bilsss======>", bill)
   const photoUri = useMemo(() => (bill ? getPhotoUri(bill) : null), [bill]);
 
   const handleDownloadAttachment = async (attachmentId: string, fileName: string) => {
@@ -61,34 +60,28 @@ export default function BillDetailsScreen() {
       }
 
       const downloadUrl = res.data.download_url;
-      // Sanitize the filename to prevent local filesystem write errors
       const cleanFileName = fileName.replace(/\s+/g, '_');
       const localUri = FileSystem.cacheDirectory + cleanFileName;
 
-      // Download directly from R2 securely in background
       const downloadRes = await FileSystem.downloadAsync(downloadUrl, localUri);
       
       setDownloadingId(null);
 
-      // On Android, use StorageAccessFramework to prompt a folder picker ("Save As" dialog)
       if (Platform.OS === 'android') {
         const mime = cleanFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
         
-        // Request directory permission (user chooses where to save it)
         const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
         if (!permissions.granted) {
           Alert.alert('Save Cancelled', 'Permission was not granted to save the file.');
           return;
         }
 
-        // Create the file in the selected directory
         const fileUri = await StorageAccessFramework.createFileAsync(
           permissions.directoryUri,
           cleanFileName,
           mime
         );
 
-        // Read downloaded cache file as base64 and write it to SAF file
         const base64 = await FileSystem.readAsStringAsync(downloadRes.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
@@ -99,7 +92,6 @@ export default function BillDetailsScreen() {
 
         Alert.alert('Success', `Attachment saved successfully to your folder.`);
       } else {
-        // On iOS, Sharing.shareAsync is the standard way to save to Files app
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(downloadRes.uri);
         } else {
@@ -116,7 +108,6 @@ export default function BillDetailsScreen() {
 
   const handleShare = async () => {
     if (!bill) return;
-
     await Share.share({
       message: `${bill.invoice_number} - ${formatAmount(bill.total_amount, bill.currency)} paid via ${bill.payment_method}`,
     });
@@ -137,7 +128,6 @@ export default function BillDetailsScreen() {
     Alert.alert('File available', 'Open the receipt image from the bill preview below.');
   };
 
-  // Delete entire bill
   const handleDeleteBill = () => {
     Alert.alert(
       'Delete Bill',
@@ -165,9 +155,9 @@ export default function BillDetailsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.safeArea}>
+      <View style={styles.container}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#0052CC" />
+          <ActivityIndicator size="large" color="#4B65E4" />
           <Text style={styles.loadingText}>Fetching bill details...</Text>
         </View>
       </View>
@@ -176,7 +166,7 @@ export default function BillDetailsScreen() {
 
   if (isError || !bill) {
     return (
-      <View style={styles.safeArea}>
+      <View style={styles.container}>
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
           <Text style={styles.errorText}>Failed to load bill details.</Text>
@@ -191,91 +181,125 @@ export default function BillDetailsScreen() {
   const status = PAYMENT_STATUS[bill.payment_status] ?? PAYMENT_STATUS.UNPAID;
 
   return (
-    <View style={styles.safeArea}>
-      <StatusBar style="dark" />
+    <View style={styles.container}>
+      <StatusBar style="light" />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bill Details</Text>
-        <View style={{ width: 36 }} />
+      {/* The Blue Header */}
+      <View style={styles.blueHeader}>
+        {/* Top Row: Back & Edit */}
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsEditModalVisible(true)} style={styles.headerEditBtn}>
+            <Ionicons name="pencil" size={14} color="#FFFFFF" />
+            <Text style={styles.headerEditText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Center: Price & Invoice */}
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerAmount}>{formatAmount(bill.total_amount, bill.currency)}</Text>
+          <Text style={styles.headerInvoice}>{bill.invoice_number}</Text>
+          <View style={styles.headerDateBadge}>
+             <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
+             <Text style={styles.headerDate}>{formatDate(bill.purchase_date)}</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: Math.round(height * 0.06) }]}
+        style={{ zIndex: 10, elevation: 10 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.round(height * 0.06),paddingTop:35 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.summaryCard}>
-          <View style={styles.billIcon}>
-            <Ionicons name="receipt-outline" size={24} color="#0052CC" />
+        {/* Action Buttons (Overlapping) */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={styles.actionCardBtn} onPress={handleDownload}>
+            <Ionicons name="download-outline" size={20} color="#4B65E4" />
+            <Text style={styles.actionCardText}>Download</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.actionCardBtn} onPress={handleShare}>
+            <Ionicons name="share-social-outline" size={20} color="#4B65E4" />
+            <Text style={styles.actionCardText}>Share Bill</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bill Information Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>BILL INFORMATION</Text>
+            <TouchableOpacity onPress={() => setIsEditModalVisible(true)}>
+              <Text style={styles.editDetailsText}>Edit Details</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.summaryText}>
-            <Text style={styles.billTitle} numberOfLines={2}>{bill.invoice_number}</Text>
-            <Text style={styles.billSubtitle} numberOfLines={1}>{bill.purchase_location || 'Bill purchase'}</Text>
-            <Text style={styles.billMeta} numberOfLines={1}>{bill.payment_method}</Text>
+
+          <InfoRow label="Purchase Date" value={formatDate(bill.purchase_date)} />
+          <InfoRow label="Category" value={bill.category?.name || 'Others'} />
+          <InfoRow label="Payment Method" value={bill.payment_method} />
+          <InfoRow label="Invoice Number" value={bill.invoice_number} />
+          <InfoRow label="Source" value={bill.ocr_status || bill.ai_status || 'Manual'} />
+          <InfoRow label="Added On" value={formatDate(bill.created_at)} />
+          {bill.notes ? <InfoRow label="Notes" value={bill.notes} /> : null}
+        </View>
+
+        {/* Financial Breakdown Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>FINANCIAL BREAKDOWN</Text>
           </View>
-          <View style={styles.amountBlock}>
-            <Text style={styles.amount}>{formatAmount(bill.total_amount, bill.currency)}</Text>
-            <View style={styles.badgesRow}>
-              <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-                <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
-              </View>
-              {bill.bill_status ? (
-                <View style={[styles.statusBadge, { backgroundColor: BILL_STATUS[bill.bill_status]?.bg ?? '#F3F4F6', marginTop: 4 }]}>
-                  <Text style={[styles.statusText, { color: BILL_STATUS[bill.bill_status]?.text ?? '#6B7280' }]}>
-                    {BILL_STATUS[bill.bill_status]?.label ?? bill.bill_status}
-                  </Text>
-                </View>
-              ) : null}
+          
+          <InfoRow label="Subtotal" value={formatAmount(bill.subtotal, bill.currency)} />
+          <InfoRow label="Tax" value={formatAmount(bill.tax_amount, bill.currency)} />
+          <InfoRow label="Discount" value={formatAmount(bill.discount_amount, bill.currency)} />
+          
+          <View style={styles.divider} />
+          
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Amount</Text>
+            <Text style={styles.totalValue}>{formatAmount(bill.total_amount, bill.currency)}</Text>
+          </View>
+          
+          <View style={styles.statusRow}>
+            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+              <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
             </View>
+            {bill.bill_status ? (
+              <View style={[styles.statusBadge, { backgroundColor: BILL_STATUS[bill.bill_status]?.bg ?? '#F3F4F6' }]}>
+                <Text style={[styles.statusText, { color: BILL_STATUS[bill.bill_status]?.text ?? '#6B7280' }]}>
+                  {BILL_STATUS[bill.bill_status]?.label ?? bill.bill_status}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
         {bill.warranty_until ? (
-          <View style={styles.warrantyCard}>
-            <View style={styles.warrantyItem}>
-              <Ionicons name="shield-checkmark-outline" size={18} color="#0052CC" />
-              <View>
-                <Text style={styles.warrantyTitle}>Warranty Active</Text>
-                <Text style={styles.warrantySubtitle}>Expires {formatDate(bill.warranty_until)}</Text>
-              </View>
-            </View>
-            {warrantyDays !== null ? (
-              <View style={styles.daysPill}>
-                <Text style={styles.daysValue}>{warrantyDays}</Text>
-                <Text style={styles.daysLabel}>Days Left</Text>
-              </View>
-            ) : null}
+          <View style={styles.card}>
+             <View style={styles.cardHeaderRow}>
+               <Text style={styles.cardTitle}>WARRANTY</Text>
+             </View>
+             <View style={styles.warrantyItem}>
+               <Ionicons name="shield-checkmark-outline" size={24} color="#059669" />
+               <View style={{ flex: 1 }}>
+                 <Text style={styles.warrantyTitle}>Active Warranty</Text>
+                 <Text style={styles.warrantySubtitle}>Expires {formatDate(bill.warranty_until)}</Text>
+               </View>
+               {warrantyDays !== null ? (
+                 <View style={styles.daysPill}>
+                   <Text style={styles.daysValue}>{warrantyDays}</Text>
+                   <Text style={styles.daysLabel}>Days Left</Text>
+                 </View>
+               ) : null}
+             </View>
           </View>
         ) : null}
 
-        {/* Bill Info Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Bill Information</Text>
-            <TouchableOpacity style={styles.sectionEditBtn} onPress={() => setIsEditModalVisible(true)}>
-              <Text style={styles.sectionEditText}>Edit Bill</Text>
-            </TouchableOpacity>
-          </View>
-          <InfoRow label="Bill Date" value={formatDate(bill.purchase_date)} />
-          <InfoRow label="Category" value={bill.category?.name || 'Electronics'} />
-          <InfoRow label="Payment Method" value={bill.payment_method} />
-          <InfoRow label="Bill Status" value={bill.bill_status} />
-          <InfoRow label="Bill Number" value={bill.invoice_number} />
-          <InfoRow label="Added On" value={formatDate(bill.created_at)} />
-          <InfoRow label="Last Updated" value={formatDate(bill.updated_at)} />
-          <InfoRow label="Source" value={bill.ocr_status || bill.ai_status || 'Manual'} />
-          <InfoRow label="Subtotal" value={formatAmount(bill.subtotal, bill.currency)} />
-          <InfoRow label="Tax" value={formatAmount(bill.tax_amount, bill.currency)} />
-          <InfoRow label="Discount" value={formatAmount(bill.discount_amount, bill.currency)} />
-          {bill.notes ? <InfoRow label="Notes" value={bill.notes} /> : null}
-        </View>
-
         {/* Products Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Products</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>PRODUCTS</Text>
           </View>
 
           {bill.bill_items && bill.bill_items.length > 0 ? (
@@ -324,11 +348,7 @@ export default function BillDetailsScreen() {
                       <View style={styles.productWarrantyRow}>
                         <Text style={styles.productWarrantyText}>🛡️ {item.warranty_months} months warranty</Text>
                       </View>
-                    ) : (
-                      <View style={styles.productWarrantyRow}>
-                        <Text style={styles.productNoWarrantyText}>No Warranty</Text>
-                      </View>
-                    )}
+                    ) : null}
                   </View>
                 </View>
               );
@@ -337,17 +357,15 @@ export default function BillDetailsScreen() {
             <View style={styles.productEmptyState}>
               <Ionicons name="cube-outline" size={28} color="#D1D5DB" />
               <Text style={styles.productEmptyText}>No products recorded yet</Text>
-              <Text style={styles.productEmptyHint}>Add products to track warranty reminders</Text>
             </View>
           )}
         </View>
 
         {/* Attachments Section */}
         {bill.attachments && bill.attachments.length > 0 ? (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Attachments</Text>
-              <Text style={styles.sectionSubtitle}>({bill.attachments.length} file{bill.attachments.length > 1 ? 's' : ''})</Text>
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>ATTACHMENTS</Text>
             </View>
 
             {bill.attachments.map((att: any) => {
@@ -359,14 +377,14 @@ export default function BillDetailsScreen() {
                   <Ionicons
                     name={isPdf ? 'document-text' : 'image'}
                     size={24}
-                    color="#0052CC"
+                    color="#4B65E4"
                   />
                   <View style={styles.attachmentInfo}>
                     <Text style={styles.attachmentName} numberOfLines={1}>
                       {att.file_name}
                     </Text>
                     <Text style={styles.attachmentMeta}>
-                      {att.file_size ? `${(att.file_size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown size'} • {isPdf ? 'PDF Document' : 'Image Scan'}
+                      {att.file_size ? `${(att.file_size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown size'} • {isPdf ? 'PDF' : 'Image'}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -375,9 +393,9 @@ export default function BillDetailsScreen() {
                     disabled={isDownloading}
                   >
                     {isDownloading ? (
-                      <ActivityIndicator size="small" color="#0052CC" />
+                      <ActivityIndicator size="small" color="#4B65E4" />
                     ) : (
-                      <Ionicons name="download-outline" size={20} color="#0052CC" />
+                      <Ionicons name="download-outline" size={20} color="#4B65E4" />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -386,29 +404,14 @@ export default function BillDetailsScreen() {
           </View>
         ) : null}
 
-        <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleDownload}>
-            <Ionicons name="download-outline" size={20} color="#0052CC" />
-            <Text style={styles.actionText}>Download PDF</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={20} color="#0052CC" />
-            <Text style={styles.actionText}>Share Bill</Text>
-          </TouchableOpacity>
-        </View>
-
         {photoUri ? (
-          <View style={styles.photoSection}>
-            <View style={styles.photoLabel}>
-              <Ionicons name="image-outline" size={14} color="#FFFFFF" />
-              <Text style={styles.photoLabelText}>Original Scan</Text>
-            </View>
-            <Image source={{ uri: photoUri }} style={styles.receiptImage} resizeMode="contain" />
+          <View style={styles.photoCard}>
+            <Image source={{ uri: photoUri }} style={styles.receiptImage} resizeMode="cover" />
           </View>
         ) : null}
 
         <TouchableOpacity style={styles.dangerDeleteBtn} onPress={handleDeleteBill}>
-          <Ionicons name="trash" size={16} color="#FFFFFF" />
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
           <Text style={styles.dangerDeleteText}>Delete Entire Bill</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -423,301 +426,225 @@ export default function BillDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginBottom: 10,
+  container: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
+  blueHeader: {
+    backgroundColor: '#4B65E4',
+    paddingTop: 36, // Adjusted for status bar
+    paddingBottom: 40,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
-  attachmentItemRow: {
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  attachmentInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  attachmentName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  attachmentMeta: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  downloadIconBtn: {
-    padding: 8,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F6F4FF',
-  },
-  header: {
-    height: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEAFB',
+    paddingHorizontal: 20,
   },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  editButton: {
-    minWidth: 36,
-    alignItems: 'flex-end',
-  },
-  editButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-  content: {
-    padding: 16,
-  },
-  summaryCard: {
+  headerEditBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 14,
-    shadowColor: '#7C6BBD',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 3,
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  billIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+  headerEditText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  headerAmount: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  headerInvoice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 4,
+  },
+  headerDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  headerDate: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: -24, // Overlap the blue header
+    marginBottom: 20,
+    paddingHorizontal: 4,
+    zIndex: 10,
+    elevation: 10,
+  },
+  actionCardBtn: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EAF1FF',
-    marginRight: 12,
+    backgroundColor: '#FFFFFF',
+    height: 56,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  summaryText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  billTitle: {
+  actionCardText: {
     fontSize: 14,
     fontWeight: '800',
     color: '#111827',
   },
-  billSubtitle: {
-    marginTop: 3,
-    fontSize: 11,
-    color: '#6B7280',
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  billMeta: {
-    marginTop: 2,
-    fontSize: 10,
-    color: '#9CA3AF',
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  amountBlock: {
-    alignItems: 'flex-end',
-    marginLeft: 8,
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#4B65E4',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  amount: {
+  editDetailsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B65E4',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 16,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  totalValue: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#0052CC',
+    color: '#111827',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
   },
   statusBadge: {
-    marginTop: 5,
     borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-  },
-  warrantyCard: {
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#EAF1FF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   warrantyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   warrantyTitle: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#0052CC',
+    color: '#111827',
   },
   warrantySubtitle: {
     marginTop: 2,
-    fontSize: 10,
+    fontSize: 12,
     color: '#6B7280',
   },
   daysPill: {
     alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   daysValue: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#0052CC',
+    color: '#059669',
   },
   daysLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#6B7280',
-  },
-  section: {
-    marginTop: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#0052CC',
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#059669',
     textTransform: 'uppercase',
   },
-  badgesRow: {
-    alignItems: 'flex-end',
-  },
-  actionsRow: {
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  actionText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  photoSection: {
-    marginTop: 16,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    minHeight: 260,
-    overflow: 'hidden',
-  },
-  photoLabel: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    zIndex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 12,
-    backgroundColor: '#6B7280',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  photoLabelText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  receiptImage: {
-    width: '100%',
-    height: 320,
-    borderRadius: 6,
-    backgroundColor: '#F9FAFB',
-  },
-  dangerDeleteBtn: {
-    marginTop: 24,
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  dangerDeleteText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionEditBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#EAF1FF',
-  },
-  sectionEditText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0052CC',
-  },
-
-  // ── Product cards ────────────────────────────────────────────────────────
   productItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
-    gap: 10,
+    paddingVertical: 14,
+    gap: 12,
   },
   productItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F3F7',
+    borderBottomColor: '#F3F4F6',
   },
   productIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#EEF2FF',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
+    marginTop: 2,
   },
   productBody: {
     flex: 1,
@@ -731,111 +658,125 @@ const styles = StyleSheet.create({
   },
   productName: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#111827',
   },
   productPrice: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0052CC',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
   },
   productDesc: {
-    marginTop: 2,
-    fontSize: 11,
+    marginTop: 4,
+    fontSize: 12,
     color: '#6B7280',
   },
   productWarrantyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    gap: 6,
+    marginTop: 6,
   },
   productWarrantyText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#059669',
   },
-  productNoWarrantyText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9CA3AF',
-  },
   productEmptyState: {
-    paddingVertical: 24,
+    paddingVertical: 20,
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   productEmptyText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#9CA3AF',
   },
-  productEmptyHint: {
-    fontSize: 11,
-    color: '#C4C4C4',
+  attachmentItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  addProductBtn: {
-    marginTop: 10,
-    height: 42,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#C7D2FE',
-    borderStyle: 'dashed',
+  attachmentInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  attachmentName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  attachmentMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  downloadIconBtn: {
+    padding: 10,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+  },
+  photoCard: {
+    marginTop: 8,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  receiptImage: {
+    width: '100%',
+    height: 320,
+    backgroundColor: '#F3F4F6',
+  },
+  dangerDeleteBtn: {
+    marginTop: 24,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#F5F3FF',
-  },
-  addProductBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4B65E4',
-  },
-  productActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
-    marginTop: 10,
-  },
-  productActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderColor: '#FEE2E2',
   },
-  productActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4B65E4',
+  dangerDeleteText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EF4444',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: '#FAFAFA',
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 14,
+    fontWeight: '600',
     color: '#6B7280',
   },
   errorText: {
-    marginTop: 12,
-    marginBottom: 18,
+    marginTop: 16,
+    marginBottom: 20,
     fontSize: 14,
+    fontWeight: '600',
     color: '#EF4444',
   },
   retryButton: {
-    borderRadius: 8,
-    backgroundColor: '#0052CC',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#4B65E4',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   retryButtonText: {
     fontSize: 13,
