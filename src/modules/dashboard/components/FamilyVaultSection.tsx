@@ -2,7 +2,11 @@ import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { SectionHeader } from '../../../components/common/SectionHeader';
 
-export const FamilyVaultSection = () => (
+interface FamilyVaultSectionProps {
+  onPress?: () => void;
+}
+
+export const FamilyVaultSection = ({ onPress }: FamilyVaultSectionProps) => (
   <>
     <SectionHeader title="Family Vault" />
     <View style={[styles.card, styles.familyVaultRow]}>
@@ -18,7 +22,7 @@ export const FamilyVaultSection = () => (
         <Text style={styles.familySharedCount}>35</Text>
         <Text style={styles.familySharedLabel}>Shared</Text>
       </View>
-      <TouchableOpacity style={styles.familyBtn}>
+      <TouchableOpacity style={styles.familyBtn} onPress={onPress}>
         <Text style={styles.familyBtnText}>All →</Text>
       </TouchableOpacity>
     </View>

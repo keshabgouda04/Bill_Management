@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BillDetail, PaymentStatus, UpdateBillPayload, useUpdateBill } from '../api/billsApi';
+import { CATEGORIES } from '../../upload/constants/categories';
+import { CategorySelectorModal } from '../../upload/components/CategorySelectorModal';
 
 interface EditBillModalProps {
   visible: boolean;
@@ -105,9 +107,10 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
   const [currency, setCurrency] = useState('INR');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('PAID');
-  const [billCategory, setBillCategory] = useState('Other');
+  const [billCategory, setBillCategory] = useState('');
   const [warrantyUntil, setWarrantyUntil] = useState('');
   const [notes, setNotes] = useState('');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const mutation = useUpdateBill();
 
@@ -126,7 +129,7 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
     setPaymentStatus(bill.payment_status || 'PAID');
     setWarrantyUntil(formatDateInput(bill.warranty_until));
     setNotes(bill.notes || '');
-    setBillCategory(bill.category_id || 'Other');
+    setBillCategory(bill.category_id || '');
 
     if (hasProducts) {
       setSubtotal(formatNumberInput(productsTotal));
@@ -382,13 +385,17 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
             </View>
 
             <Text style={styles.fieldLabel}>Category</Text>
-            <TextInput
-              style={styles.fieldInput}
-              placeholder="e.g. Electronics, Food"
-              placeholderTextColor="#BBB"
-              value={billCategory}
-              onChangeText={setBillCategory}
-            />
+            <TouchableOpacity
+              style={[styles.fieldInput, { justifyContent: 'center' }]}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ color: billCategory ? '#1A1A1A' : '#BBB', fontSize: 15 }}>
+                  {billCategory ? CATEGORIES.find((c) => c.id === billCategory)?.name : 'Select Category'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#888" />
+              </View>
+            </TouchableOpacity>
 
             <Text style={styles.sectionHeader}>Payment</Text>
 
@@ -491,6 +498,14 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
+
+      {/* Category Dropdown Modal */}
+      <CategorySelectorModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategoryId={billCategory}
+        onSelectCategory={setBillCategory}
+      />
     </Modal>
   );
 }

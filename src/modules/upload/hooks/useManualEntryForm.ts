@@ -217,7 +217,7 @@ export const useManualEntryForm = (onClose: () => void) => {
 
     let isoDate = '';
     if (billDate.trim()) {
-      isoDate = parseDateToISO(billDate.trim());
+      isoDate = parseDateToISO(billDate.trim()) || '';
       if (!isoDate) {
         newErrors.billDate = 'Please enter a valid date in DD/MM/YYYY format.';
       }
@@ -338,7 +338,7 @@ export const useManualEntryForm = (onClose: () => void) => {
     if (billNotes.trim()) {
       formData.append('notes', billNotes.trim());
     }
-    formData.append('category_id', billCategory);
+    formData.append('category_id', billCategory || '');
 
     const items = products.map((p) => ({
       item_name: p.itemName,

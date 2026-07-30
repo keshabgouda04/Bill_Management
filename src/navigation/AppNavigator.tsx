@@ -11,6 +11,7 @@ import { BillDetailsScreen } from '../modules/bills';
 import { SearchScreen } from '../modules/search';
 import { BillReviewScreen } from '../modules/ocr';
 import { ManualEntryScreen } from '../modules/upload';
+import FamilyHomeScreen from '../modules/family/screens/FamilyHomeScreen';
 
 export type AppStackParamList = {
   ProfileSetup: undefined;
@@ -27,6 +28,7 @@ export type AppStackParamList = {
     fileType: string;
   };
   ManualEntry: undefined;
+  FamilyHome: undefined;
 };
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -84,6 +86,7 @@ export default function AppNavigator() {
       <Stack.Screen name="BillDetails" component={BillDetailsScreen} />
       <Stack.Screen name="BillReview" component={BillReviewScreen} />
       <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
+      <Stack.Screen name="FamilyHome" component={FamilyHomeScreen} />
     </Stack.Navigator>
   );
 }

@@ -159,7 +159,7 @@ export default function DashboardScreen() {
         <CategoriesSection />
         <RecentActivitySection />
         <SpendingGraphSection />
-        <FamilyVaultSection />
+        <FamilyVaultSection onPress={() => navigation.navigate('FamilyHome')} />
 
         {/* Bottom padding for tab bar */}
         <View style={{ height: 90 }} />
