@@ -67,12 +67,6 @@ export default function UpdateRoleModal({
               >
                 <Text style={[styles.roleBtnText, role === 'MEMBER' && styles.roleBtnTextActive]}>Member</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.roleBtn, role === 'VIEWER' && styles.roleBtnActive]}
-                onPress={() => setRole('VIEWER')}
-              >
-                <Text style={[styles.roleBtnText, role === 'VIEWER' && styles.roleBtnTextActive]}>Viewer</Text>
-              </TouchableOpacity>
             </View>
           </View>
 

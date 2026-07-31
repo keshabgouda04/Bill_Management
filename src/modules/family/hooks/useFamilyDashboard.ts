@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
 import { 
   useGetMembers, 
+  useGetPendingInvitations,
   useAcceptInvitation, 
   useRejectInvitation, 
   useRemoveMember,
@@ -19,8 +20,17 @@ export function useFamilyDashboard(family: FamilyDetails) {
 
   // React Query Fetch Members
   const { data: membersData, isLoading, isError, refetch } = useGetMembers();
-  const members = membersData?.data?.members || [];
-  const owner = membersData?.data?.owner;
+  const members = Array.isArray(membersData) 
+    ? membersData 
+    : membersData?.data?.members || membersData?.members || membersData?.data || [];
+  const owner = membersData?.data?.owner || membersData?.owner;
+
+  // React Query Incoming Invitations for current logged-in user
+  const { data: rawIncomingInvitations, refetch: refetchIncoming } = useGetPendingInvitations();
+  const rawIncoming = rawIncomingInvitations as any;
+  const incomingInvitations = Array.isArray(rawIncoming)
+    ? rawIncoming
+    : rawIncoming?.data?.invitations || rawIncoming?.invitations || rawIncoming?.data || [];
 
   // Mutations
   const acceptMutation = useAcceptInvitation();
@@ -36,8 +46,8 @@ export function useFamilyDashboard(family: FamilyDetails) {
     role: FamilyRole;
   } | null>(null);
 
-  // Group members by status/roles
-  const activeMembers = members.filter((m: FamilyMember) => m.status === 'ACTIVE' && m.user_id !== family.owner_id);
+  // Group members by status/roles (default status to ACTIVE if missing in backend data)
+  const activeMembers = members.filter((m: FamilyMember) => (!m.status || m.status === 'ACTIVE') && m.user_id !== family.owner_id);
   const pendingInvites = members.filter((m: FamilyMember) => m.status === 'PENDING');
   const rejectedMembers = members.filter((m: FamilyMember) => m.status === 'REJECTED');
 
@@ -186,6 +196,7 @@ export function useFamilyDashboard(family: FamilyDetails) {
       activeMembers,
       pendingInvites,
       rejectedMembers,
+      incomingInvitations,
       ownerMember,
       isLoading,
       isError,
@@ -195,7 +206,10 @@ export function useFamilyDashboard(family: FamilyDetails) {
       isDeleting: deleteMutation.isPending,
     },
     actions: {
-      refetch,
+      refetch: () => {
+        refetch();
+        refetchIncoming();
+      },
       setInviteModalVisible,
       setUpdateRoleModalVisible,
       setSelectedMember,

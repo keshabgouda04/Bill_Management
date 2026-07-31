@@ -14,6 +14,7 @@ import { useFamilyDashboard } from '../hooks/useFamilyDashboard';
 import InviteMemberModal from '../components/InviteMemberModal';
 import UpdateRoleModal from '../components/UpdateRoleModal';
 import FamilyMemberRow from '../components/FamilyMemberRow';
+import PendingInvitationCard from '../components/PendingInvitationCard';
 
 interface FamilyDashboardScreenProps {
   family: FamilyDetails;
@@ -29,6 +30,7 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
     activeMembers,
     pendingInvites,
     rejectedMembers,
+    incomingInvitations,
     ownerMember,
     isLoading,
     isError,
@@ -45,7 +47,7 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
           <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{family.family_name}</Text>
+          <Text style={styles.headerTitle}>{family?.name || family?.family_name || 'Family Workspace'}</Text>
           <Text style={styles.headerSubtitle}>Family Workspace</Text>
         </View>
         {isOwner ? (
@@ -78,15 +80,21 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
       ) : (
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Family Card */}
-          <View style={styles.infoCard}>
-            <Ionicons name="people" size={32} color="#4B65E4" style={styles.infoIcon} />
-            <View>
-              <Text style={styles.infoTitle}>{family.family_name}</Text>
-              <Text style={styles.infoMembersCount}>
-                {members.length} {members.length === 1 ? 'Member' : 'Members'} in workspace
-              </Text>
-            </View>
-          </View>
+          {(() => {
+            const totalCount = (ownerMember ? 1 : 0) + activeMembers.length;
+            const displayName = family?.name || family?.family_name || 'Family Workspace';
+            return (
+              <View style={styles.infoCard}>
+                <Ionicons name="people" size={32} color="#4B65E4" style={styles.infoIcon} />
+                <View>
+                  <Text style={styles.infoTitle}>{displayName}</Text>
+                  <Text style={styles.infoMembersCount}>
+                    {totalCount} {totalCount === 1 ? 'Member' : 'Members'} in workspace
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
 
           {/* Owner Section */}
           <Text style={styles.sectionHeader}>WORKSPACE OWNER</Text>
@@ -128,10 +136,10 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
             </View>
           )}
 
-          {/* Pending Invitations Section */}
+          {/* Pending Outgoing Invitations Section */}
           {pendingInvites.length > 0 && (
             <>
-              <Text style={styles.sectionHeader}>PENDING INVITATIONS</Text>
+              <Text style={styles.sectionHeader}>OUTGOING INVITATIONS</Text>
               {pendingInvites.map((m: any) => (
                 <FamilyMemberRow
                   key={m.id}
@@ -140,6 +148,21 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
                   isOwner={isOwner}
                   onUpdateRole={actions.handleUpdateRole}
                   onRemove={actions.handleRemove}
+                  onAccept={actions.handleAccept}
+                  onReject={actions.handleReject}
+                />
+              ))}
+            </>
+          )}
+
+          {/* Incoming Invitations from other families */}
+          {incomingInvitations && incomingInvitations.length > 0 && (
+            <>
+              <Text style={styles.sectionHeader}>INCOMING INVITATIONS ({incomingInvitations.length})</Text>
+              {incomingInvitations.map((invite: any) => (
+                <PendingInvitationCard
+                  key={invite.id || invite.token}
+                  invite={invite}
                   onAccept={actions.handleAccept}
                   onReject={actions.handleReject}
                 />
@@ -355,5 +378,50 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 15,
     fontWeight: '600',
+  },
+  incomingInviteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#EEF2FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  incomingInviteTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  incomingInviteSub: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  incomingAcceptBtn: {
+    backgroundColor: '#4B65E4',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  incomingAcceptText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  incomingRejectBtn: {
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FF4444',
+  },
+  incomingRejectText: {
+    color: '#FF4444',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

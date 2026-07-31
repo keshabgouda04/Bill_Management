@@ -20,7 +20,7 @@ export default function InviteMemberModal({ visible, onClose }: InviteMemberModa
       return;
     }
 
-    inviteMutation.mutate({ email: email.trim(), role }, {
+    inviteMutation.mutate({ email: email.trim().toLowerCase(), role }, {
       onSuccess: () => {
         Alert.alert('Success', 'Invitation sent successfully!');
         setEmail('');
@@ -76,12 +76,6 @@ export default function InviteMemberModal({ visible, onClose }: InviteMemberModa
                 onPress={() => setRole('MEMBER')}
               >
                 <Text style={[styles.roleBtnText, role === 'MEMBER' && styles.roleBtnTextActive]}>Member</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.roleBtn, role === 'VIEWER' && styles.roleBtnActive]}
-                onPress={() => setRole('VIEWER')}
-              >
-                <Text style={[styles.roleBtnText, role === 'VIEWER' && styles.roleBtnTextActive]}>Viewer</Text>
               </TouchableOpacity>
             </View>
           </View>

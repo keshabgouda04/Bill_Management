@@ -34,6 +34,8 @@ export default function FamilyMemberRow({
     return { bg: '#F3F4F6', text: '#4B5563' }; // VIEWER
   };
 
+  const displayStatus = member.status || 'ACTIVE';
+
   const getStatusColor = (status: string) => {
     if (status === 'ACTIVE') return { bg: '#DEF7EC', text: '#03543F' };
     if (status === 'PENDING') return { bg: '#FEF08A', text: '#713F12' };
@@ -41,7 +43,7 @@ export default function FamilyMemberRow({
   };
 
   const roleStyle = getRoleColor(member.role);
-  const statusStyle = getStatusColor(member.status);
+  const statusStyle = getStatusColor(displayStatus);
 
   return (
     <View style={styles.memberCard}>
@@ -77,7 +79,7 @@ export default function FamilyMemberRow({
             <Text style={[styles.badgeText, { color: roleStyle.text }]}>{member.role}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.badgeText, { color: statusStyle.text }]}>{member.status}</Text>
+            <Text style={[styles.badgeText, { color: statusStyle.text }]}>{displayStatus}</Text>
           </View>
         </View>
       </View>

@@ -7,7 +7,8 @@ export type FamilyInviteStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
 
 export interface FamilyDetails {
   id: string;
-  family_name: string;
+  name?: string;
+  family_name?: string;
   owner_id: string;
   created_at: string;
   updated_at?: string;
@@ -33,8 +34,19 @@ export interface FamilyMember {
 
 export interface PendingInvitation {
   id: string;
-  family_name: string;
-  invited_by: string;
+  family_name?: string;
+  invited_by?: string | { id?: string; full_name?: string; email?: string; name?: string };
+  invited_by_email?: string;
+  invited_by_name?: string;
+  inviter_email?: string;
+  inviter_name?: string;
+  inviter?: {
+    id?: string;
+    full_name?: string;
+    email?: string;
+    name?: string;
+  };
+  email?: string;
   role: FamilyRole;
   status: FamilyInviteStatus;
 }
@@ -61,6 +73,7 @@ export const useGetFamily = () => {
         throw error;
       }
     },
+    refetchOnMount: 'always',
   });
 };
 
@@ -79,6 +92,7 @@ export const useGetMembers = () => {
         throw error;
       }
     },
+    refetchOnMount: 'always',
   });
 };
 
@@ -89,7 +103,10 @@ export const useGetPendingInvitations = () => {
     queryFn: async () => {
       try {
         const response: any = await api.get(API_URL.FAMILY.INVITATIONS);
-        return response;
+        const list = Array.isArray(response)
+          ? response
+          : response?.data?.invitations || response?.invitations || response?.data || response?.items || [];
+        return Array.isArray(list) ? list : [];
       } catch (error: any) {
         if (error.response?.status === 404) {
           return [];
@@ -97,5 +114,6 @@ export const useGetPendingInvitations = () => {
         throw error;
       }
     },
+    refetchOnMount: 'always',
   });
 };
