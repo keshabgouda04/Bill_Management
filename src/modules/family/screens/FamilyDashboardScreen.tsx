@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -15,6 +15,10 @@ import InviteMemberModal from '../components/InviteMemberModal';
 import UpdateRoleModal from '../components/UpdateRoleModal';
 import FamilyMemberRow from '../components/FamilyMemberRow';
 import PendingInvitationCard from '../components/PendingInvitationCard';
+import FamilyVaultSection from '../components/FamilyVaultSection';
+import ShareToVaultModal from '../components/ShareToVaultModal';
+import EditVisibilityModal from '../components/EditVisibilityModal';
+import { SharedVaultBill } from '../../../services/query/family/familyVault';
 
 interface FamilyDashboardScreenProps {
   family: FamilyDetails;
@@ -38,6 +42,13 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
     updateRoleModalVisible,
     selectedMember,
   } = state;
+
+  const [shareVaultModalVisible, setShareVaultModalVisible] = useState(false);
+  const [editVisibilityModalVisible, setEditVisibilityModalVisible] = useState(false);
+  const [editingVaultBill, setEditingVaultBill] = useState<SharedVaultBill | null>(null);
+
+  const myMember = (members || []).find((m: any) => m.user_id === currentUserId);
+  const isAdmin = isOwner || myMember?.role === 'ADMIN';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -95,6 +106,18 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
               </View>
             );
           })()}
+
+          {/* Family Bill Vault Section */}
+          <FamilyVaultSection
+            currentUserId={currentUserId}
+            isOwner={isOwner}
+            isAdmin={isAdmin}
+            onOpenShareModal={() => setShareVaultModalVisible(true)}
+            onOpenEditVisibilityModal={(bill) => {
+              setEditingVaultBill(bill);
+              setEditVisibilityModalVisible(true);
+            }}
+          />
 
           {/* Owner Section */}
           <Text style={styles.sectionHeader}>WORKSPACE OWNER</Text>
@@ -229,6 +252,22 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
           currentRole={selectedMember.role}
         />
       )}
+
+      {/* Share to Vault Modal */}
+      <ShareToVaultModal
+        visible={shareVaultModalVisible}
+        onClose={() => setShareVaultModalVisible(false)}
+      />
+
+      {/* Edit Visibility Modal */}
+      <EditVisibilityModal
+        visible={editVisibilityModalVisible}
+        sharedBill={editingVaultBill}
+        onClose={() => {
+          setEditVisibilityModalVisible(false);
+          setEditingVaultBill(null);
+        }}
+      />
     </SafeAreaView>
   );
 }

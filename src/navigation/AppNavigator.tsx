@@ -22,7 +22,7 @@ export type AppStackParamList = {
   Categories: undefined;
   ViewBills: undefined;
   Search?: { initialQuery?: string };
-  BillDetails: { billId: string };
+  BillDetails: { billId: string; sharedBillId?: string };
   BillReview: {
     fileUri: string;
     fileName: string;

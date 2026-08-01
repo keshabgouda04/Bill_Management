@@ -27,6 +27,7 @@ import * as Sharing from 'expo-sharing';
 import { getAttachmentDownloadUrl } from '../../../services/attachmentService';
 import InfoRow from '../components/InfoRow';
 import EditBillModal from '../components/EditBillModal';
+import { useGetVaultBillDetail } from '../../../services/query/family/familyVault';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'BillDetails'>;
 type BillDetailsRoute = RouteProp<AppStackParamList, 'BillDetails'>;
@@ -35,15 +36,40 @@ export default function BillDetailsScreen() {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<BillDetailsRoute>();
   const { width, height } = Dimensions.get('window');
-  const { billId } = route.params;
+  const { billId, sharedBillId } = route.params;
 
-  const { data, isLoading, isError, refetch } = useGetBillDetails(billId);
+  const {
+    data: personalData,
+    isLoading: isLoadingPersonal,
+    isError: isErrorPersonal,
+    refetch: refetchPersonal,
+  } = useGetBillDetails(billId);
+
+  const {
+    data: vaultData,
+    isLoading: isLoadingVault,
+    refetch: refetchVault,
+  } = useGetVaultBillDetail(sharedBillId || (isErrorPersonal ? billId : ''));
+
   const deleteBillMutation = useDeleteBill();
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const bill = data?.data.bill;
+  const bill =
+    personalData?.data?.bill ||
+    vaultData?.bills ||
+    vaultData?.sharedBill?.bills ||
+    (vaultData as any)?.data?.sharedBill?.bills ||
+    (vaultData as any)?.data?.bills;
+
+  const isLoading = isLoadingPersonal && !bill && isLoadingVault;
+  const isError = isErrorPersonal && !bill;
+
+  const refetch = () => {
+    refetchPersonal();
+    refetchVault();
+  };
   const photoUri = useMemo(() => (bill ? getPhotoUri(bill) : null), [bill]);
 
   const handleDownloadAttachment = async (attachmentId: string, fileName: string) => {

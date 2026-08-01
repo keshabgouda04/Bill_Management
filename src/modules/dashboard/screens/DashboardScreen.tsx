@@ -18,7 +18,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
 import { useGetNotifications } from '../../../services/query/notification/notification';
-import NotificationsModal from '../../../components/notifications/NotificationsModal';
+import { NotificationsModal } from '../../notification';
 import { supabase } from '../../../helper/supabase';
 import { SearchBar } from '../../../components/common/SearchBar';
 import {
