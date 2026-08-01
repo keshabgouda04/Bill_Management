@@ -17,6 +17,8 @@ import type { AppStackParamList } from '../../../navigation/AppNavigator';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useGetProfileDetails } from '../../../services/query/profile/profile';
+import { useGetNotifications } from '../../../services/query/notification/notification';
+import NotificationsModal from '../../../components/notifications/NotificationsModal';
 import { supabase } from '../../../helper/supabase';
 import { SearchBar } from '../../../components/common/SearchBar';
 import {
@@ -35,6 +37,12 @@ export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<AppStackParamList>>();
   const { data } = useGetProfileDetails();
   const profile = data?.profile;
+
+  const [isNotificationsModalVisible, setIsNotificationsModalVisible] = useState(false);
+  const { data: notifications } = useGetNotifications();
+  const unreadCount = Array.isArray(notifications)
+    ? notifications.filter((n) => !n.is_read).length
+    : 0;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -133,9 +141,16 @@ export default function DashboardScreen() {
           <TouchableOpacity
             style={styles.iconButton}
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Notifications', 'No new alerts.')}
+            onPress={() => setIsNotificationsModalVisible(true)}
           >
             <Ionicons name="notifications-outline" size={22} color="#1A1A1A" />
+            {unreadCount > 0 && (
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -164,6 +179,12 @@ export default function DashboardScreen() {
         {/* Bottom padding for tab bar */}
         <View style={{ height: 90 }} />
       </ScrollView>
+
+      {/* ── Notifications Inbox Modal ── */}
+      <NotificationsModal
+        visible={isNotificationsModalVisible}
+        onClose={() => setIsNotificationsModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -196,6 +217,26 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F6FA',
     justifyContent: 'center', alignItems: 'center',
+    position: 'relative',
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#E53E3E',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  headerBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
   },
   iconButtonLogout: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF0F0',

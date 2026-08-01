@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,7 @@ import { SearchScreen } from '../modules/search';
 import { BillReviewScreen } from '../modules/ocr';
 import { ManualEntryScreen } from '../modules/upload';
 import FamilyHomeScreen from '../modules/family/screens/FamilyHomeScreen';
+import { initializeFCMNotificationService } from '../services/messagingService';
 
 export type AppStackParamList = {
   ProfileSetup: undefined;
@@ -35,6 +36,20 @@ const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export default function AppNavigator() {
   const { data, isLoading, isError, refetch } = useGetProfileDetails();
+
+  const profile = data?.profile;
+
+  useEffect(() => {
+    if (profile?.onboarding_completed) {
+      let cleanup: (() => void) | undefined;
+      initializeFCMNotificationService().then((unsub) => {
+        cleanup = unsub;
+      });
+      return () => {
+        if (cleanup) cleanup();
+      };
+    }
+  }, [profile?.onboarding_completed]);
 
   if (isLoading) {
     return <SplashScreen />;
@@ -64,7 +79,6 @@ export default function AppNavigator() {
     );
   }
 
-  const profile = data?.profile;
   console.log(profile, 'profile======>');
   const initialRoute = profile?.onboarding_completed ? 'MainTabs' : 'ProfileSetup';
 

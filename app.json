@@ -5,7 +5,7 @@
     "scheme": "wallely",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.jpg",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -14,7 +14,7 @@
       "package": "com.wallely",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.jpg",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#132D5B"
       },
       "predictiveBackGestureEnabled": false
@@ -26,13 +26,15 @@
       "@react-native-community/datetimepicker",
       "expo-dev-client",
       "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       "expo-secure-store",
       "expo-web-browser"
     ],
     "extra": {
       "eas": {
-        "projectId": "ef3108d2-f498-4925-b032-fc49e83e947e"
+        "projectId": "e5c2ffdf-4a57-4641-a3e1-42e9a279b849"
       }
-    }
+    },
+    "owner": "keshab00"
   }
 }

@@ -2,6 +2,16 @@ export const API_URL = {
   USER: {
     PROFILE: '/api/v1/profile',
   },
+  DEVICES: {
+    REGISTER: '/api/v1/devices',
+    REMOVE: '/api/v1/devices',
+  },
+  NOTIFICATIONS: {
+    LIST: '/api/v1/notifications',
+    MARK_READ: (id: string) => `/api/v1/notifications/${id}/read`,
+    MARK_ALL_READ: '/api/v1/notifications/read-all',
+    DELETE: (id: string) => `/api/v1/notifications/${id}`,
+  },
   BILLS: {
     LIST: '/api/v1/bills',
     CREATE: '/api/v1/bills',
@@ -20,7 +30,7 @@ export const API_URL = {
     INVITATIONS: '/api/v1/family/invitations',
     ACCEPT_INVITE: (memberId: string) => `/api/v1/family/invitations/${memberId}/accept`,
     REJECT_INVITE: (memberId: string) => `/api/v1/family/invitations/${memberId}/reject`,
-    CANCEL_INVITE: (id: string) => `/api/v1/family/invite/${id}`, // Backend might not have this explicitly, keeping it for now
+    CANCEL_INVITE: (id: string) => `/api/v1/family/invite/${id}`,
     CHANGE_ROLE: (id: string) => `/api/v1/family/members/${id}`,
     REMOVE_MEMBER: (id: string) => `/api/v1/family/members/${id}`,
     DELETE: '/api/v1/family',

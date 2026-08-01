@@ -13,3 +13,12 @@ veda
 .vscode/
 *.swp
 .DS_Store
+
+# # Native generated folders for Expo Managed Workflow / EAS
+# /android/
+# /ios/
+
+# Environment files
+.env
+.env*.local
+
