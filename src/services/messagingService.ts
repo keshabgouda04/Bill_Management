@@ -172,7 +172,26 @@ export function handleNotificationTapPayload(remoteMessage: any) {
     return;
   }
 
-  // 2. Family Invite / Workspace payload
+  // 2. Reminder & Warranty payload
+  if (
+    screen === 'REMINDER' ||
+    screen === 'WARRANTY' ||
+    title.includes('reminder') ||
+    title.includes('expiring') ||
+    title.includes('warranty') ||
+    body.includes('reminder') ||
+    body.includes('expiring') ||
+    body.includes('warranty')
+  ) {
+    if (billId) {
+      navigate('BillDetails', { billId });
+      return;
+    }
+    navigate('ViewBills');
+    return;
+  }
+
+  // 3. Family Invite / Workspace payload
   if (
     screen === 'FamilyHome' ||
     screen === 'FAMILY_INVITE' ||

@@ -92,7 +92,7 @@ export default function FamilyVaultSection({
       {/* Section Title & Action Button */}
       <View style={styles.sectionHeaderRow}>
         <View>
-          <Text style={styles.sectionHeaderTitle}>FAMILY BILL VAULT</Text>
+          <Text style={styles.sectionHeaderTitle}>SHARED FAMILY HUB</Text>
           <Text style={styles.sectionHeaderSub}>
             {vaultBills.length} bill(s) shared in family
           </Text>

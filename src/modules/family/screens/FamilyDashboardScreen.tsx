@@ -107,7 +107,7 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
             );
           })()}
 
-          {/* Family Bill Vault Section */}
+          {/* Shared Family Hub Section */}
           <FamilyVaultSection
             currentUserId={currentUserId}
             isOwner={isOwner}

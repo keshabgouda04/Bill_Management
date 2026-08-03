@@ -45,9 +45,16 @@ export const useManualEntryForm = (onClose: () => void) => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [billNotes, setBillNotes] = useState('');
 
-  // Warranty states
+  // Warranty & Reminders state
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>(['7_DAYS', '1_DAY']);
+
+  const handleToggleReminder = (type: '30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR') => {
+    setSelectedReminders((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
 
   // Products (bill_items) state
   const [products, setProducts] = useState<Product[]>([]);
@@ -290,6 +297,7 @@ export const useManualEntryForm = (onClose: () => void) => {
       setBillNotes('');
       setHasWarranty(false);
       setWarrantyUntil('');
+      setSelectedReminders(['7_DAYS', '1_DAY']);
       setProducts([]);
       setProductName('');
       setProductDescription('');
@@ -334,6 +342,9 @@ export const useManualEntryForm = (onClose: () => void) => {
 
     if (isoWarrantyDate) {
       formData.append('warranty_until', isoWarrantyDate);
+      if (selectedReminders.length > 0) {
+        formData.append('reminders', JSON.stringify(selectedReminders));
+      }
     }
     if (billNotes.trim()) {
       formData.append('notes', billNotes.trim());
@@ -396,6 +407,9 @@ export const useManualEntryForm = (onClose: () => void) => {
     setHasWarranty,
     warrantyUntil,
     setWarrantyUntil,
+    selectedReminders,
+    setSelectedReminders,
+    handleToggleReminder,
     products,
     productName,
     setProductName,

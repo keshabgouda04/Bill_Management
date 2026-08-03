@@ -25,22 +25,36 @@ export const StatsRow = () => {
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
   bills.forEach((bill) => {
-    if (!bill.bill_items || !bill.purchase_date) return;
-    bill.bill_items.forEach((item) => {
-      if (typeof item.warranty_months === 'number' && item.warranty_months > 0) {
-        const purchaseDate = new Date(bill.purchase_date);
-        const expiryDate = new Date(purchaseDate);
-        expiryDate.setMonth(expiryDate.getMonth() + item.warranty_months);
+    let billCounted = false;
+    if (bill.bill_items && bill.bill_items.length > 0 && bill.purchase_date) {
+      bill.bill_items.forEach((item) => {
+        if (typeof item.warranty_months === 'number' && item.warranty_months > 0) {
+          const purchaseDate = new Date(bill.purchase_date);
+          const expiryDate = new Date(purchaseDate);
+          expiryDate.setMonth(expiryDate.getMonth() + item.warranty_months);
 
-        const diffTime = expiryDate.getTime() - nowMs;
-        if (diffTime > 0) {
-          localActiveWarrantiesCount++;
-          if (diffTime <= thirtyDaysMs) {
-            expiringSoonCount++;
+          const diffTime = expiryDate.getTime() - nowMs;
+          if (diffTime > 0) {
+            localActiveWarrantiesCount++;
+            billCounted = true;
+            if (diffTime <= thirtyDaysMs) {
+              expiringSoonCount++;
+            }
           }
         }
+      });
+    }
+
+    if (!billCounted && bill.warranty_until) {
+      const expiryDate = new Date(bill.warranty_until);
+      const diffTime = expiryDate.getTime() - nowMs;
+      if (diffTime > 0) {
+        localActiveWarrantiesCount++;
+        if (diffTime <= thirtyDaysMs) {
+          expiringSoonCount++;
+        }
       }
-    });
+    }
   });
   const activeWarrantiesCount = serverStats?.activeWarrantyCount ?? localActiveWarrantiesCount;
 

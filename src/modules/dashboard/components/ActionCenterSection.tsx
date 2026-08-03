@@ -37,10 +37,18 @@ const getExpiryConfig = (diffDays: number) => {
       action: 'View Details',
       actionColor: '#4B65E4',
     };
-  } else {
+  } else if (diffDays <= 30) {
     return {
       subtitle: `Warranty ends in ${diffDays} days`,
       tag: 'UPCOMING',
+      tagColor: '#3B82F6',
+      action: 'View Details',
+      actionColor: '#4B65E4',
+    };
+  } else {
+    return {
+      subtitle: `Warranty ends in ${diffDays} days`,
+      tag: 'ACTIVE',
       tagColor: '#22C55E',
       action: 'View Details',
       actionColor: '#4B65E4',
@@ -69,37 +77,68 @@ export const ActionCenterSection = () => {
   }
 
   const expiringItems: ExpiringItem[] = [];
+  const addedBillIds = new Set<string>();
 
   bills.forEach((bill) => {
-    if (!bill.bill_items || !bill.purchase_date) return;
+    let itemAdded = false;
 
-    bill.bill_items.forEach((item) => {
-      if (typeof item.warranty_months === 'number' && item.warranty_months > 0) {
-        const purchaseDate = new Date(bill.purchase_date);
-        const expiryDate = new Date(purchaseDate);
-        expiryDate.setMonth(expiryDate.getMonth() + item.warranty_months);
+    // 1. Check item-level warranty_months
+    if (bill.bill_items && bill.bill_items.length > 0) {
+      bill.bill_items.forEach((item) => {
+        if (typeof item.warranty_months === 'number' && item.warranty_months > 0 && bill.purchase_date) {
+          const purchaseDate = new Date(bill.purchase_date);
+          const expiryDate = new Date(purchaseDate);
+          expiryDate.setMonth(expiryDate.getMonth() + item.warranty_months);
 
-        const diffTime = expiryDate.getTime() - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const diffTime = expiryDate.getTime() - now;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays > 0 && diffDays <= 7) {
-          const emoji = getEmojiIcon(item.item_name);
-          const cfg = getExpiryConfig(diffDays);
-          expiringItems.push({
-            id: item.id,
-            billId: bill.id,
-            emoji,
-            title: item.item_name,
-            subtitle: cfg.subtitle,
-            tag: cfg.tag,
-            tagColor: cfg.tagColor,
-            action: cfg.action,
-            actionColor: cfg.actionColor,
-            expiryTime: expiryDate.getTime(),
-          });
+          if (diffDays > 0 && diffDays <= 30) {
+            const emoji = getEmojiIcon(item.item_name);
+            const cfg = getExpiryConfig(diffDays);
+            expiringItems.push({
+              id: item.id || `${bill.id}-${item.item_name}`,
+              billId: bill.id,
+              emoji,
+              title: item.item_name,
+              subtitle: cfg.subtitle,
+              tag: cfg.tag,
+              tagColor: cfg.tagColor,
+              action: cfg.action,
+              actionColor: cfg.actionColor,
+              expiryTime: expiryDate.getTime(),
+            });
+            itemAdded = true;
+          }
         }
+      });
+    }
+
+    // 2. Check bill-level warranty_until (if no items were added or if explicitly set)
+    if (!itemAdded && bill.warranty_until) {
+      const expiryDate = new Date(bill.warranty_until);
+      const diffTime = expiryDate.getTime() - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0 && diffDays <= 30) {
+        const title = bill.purchase_location || bill.invoice_number || 'Bill';
+        const emoji = getEmojiIcon(title);
+        const cfg = getExpiryConfig(diffDays);
+        expiringItems.push({
+          id: `bill-${bill.id}`,
+          billId: bill.id,
+          emoji,
+          title,
+          subtitle: cfg.subtitle,
+          tag: cfg.tag,
+          tagColor: cfg.tagColor,
+          action: cfg.action,
+          actionColor: cfg.actionColor,
+          expiryTime: expiryDate.getTime(),
+        });
+        addedBillIds.add(bill.id);
       }
-    });
+    }
   });
 
   // Sort by closest expiry date

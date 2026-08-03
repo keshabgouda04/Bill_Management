@@ -44,6 +44,8 @@ export default function ManualEntryScreen() {
     setBillDate,
     showPurchasePicker,
     setShowPurchasePicker,
+    showWarrantyPicker,
+    setShowWarrantyPicker,
     tempDate,
     setTempDate,
     invoiceNumber,
@@ -60,6 +62,12 @@ export default function ManualEntryScreen() {
     setShowCategoryModal,
     billNotes,
     setBillNotes,
+    hasWarranty,
+    setHasWarranty,
+    warrantyUntil,
+    setWarrantyUntil,
+    selectedReminders = [],
+    handleToggleReminder,
     products,
     productName,
     setProductName,
@@ -230,6 +238,59 @@ export default function ManualEntryScreen() {
                 </View>
               </Modal>
             )}
+
+            {/* Warranty Date Picker - Android */}
+            {Platform.OS === 'android' && showWarrantyPicker && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowWarrantyPicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    setWarrantyUntil(formatDateToDDMMYYYY(selectedDate));
+                  }
+                }}
+              />
+            )}
+
+            {/* Warranty Date Picker - iOS Modal */}
+            {Platform.OS === 'ios' && (
+              <Modal
+                visible={showWarrantyPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowWarrantyPicker(false)}
+              >
+                <View style={styles.iosModalOverlay}>
+                  <View style={styles.iosModalContainer}>
+                    <View style={styles.iosModalHeader}>
+                      <TouchableOpacity onPress={() => setShowWarrantyPicker(false)}>
+                        <Text style={styles.iosModalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setWarrantyUntil(formatDateToDDMMYYYY(tempDate));
+                          setShowWarrantyPicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setTempDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
           </View>
 
           {/* Products Section */}
@@ -308,6 +369,77 @@ export default function ManualEntryScreen() {
                 </Text>
               )}
             </View>
+          </View>
+
+          {/* Warranty & Reminder Section */}
+          <View style={{ marginTop: 14 }}>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}
+              onPress={() => setHasWarranty(!hasWarranty)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={hasWarranty ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={hasWarranty ? '#4B65E4' : '#888'}
+              />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginLeft: 8 }}>
+                Add Warranty Expiration
+              </Text>
+            </TouchableOpacity>
+
+            {hasWarranty && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={styles.fieldLabel}>Warranty Expiration Date</Text>
+                <TouchableOpacity
+                  style={[styles.dateSelector, errors?.warrantyUntil ? styles.inputError : null]}
+                  onPress={() => {
+                    let current = parseDateTextToDate(warrantyUntil);
+                    if (!warrantyUntil) current = new Date();
+                    setTempDate(current);
+                    setShowWarrantyPicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateSelectorText, !warrantyUntil && styles.placeholderText]}>
+                    {warrantyUntil || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#888" />
+                </TouchableOpacity>
+                {errors?.warrantyUntil && <Text style={styles.errorText}>{errors.warrantyUntil}</Text>}
+
+                {/* Remind Me Pills */}
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remind Me Before Expiry</Text>
+                <View style={styles.reminderContainer}>
+                  {[
+                    { id: '30_DAYS', label: '30 Days Before' },
+                    { id: '7_DAYS', label: '7 Days Before' },
+                    { id: '1_DAY', label: '1 Day Before' },
+                    { id: '1_HOUR', label: '1 Hour Before' },
+                  ].map((item) => {
+                    const isSelected = selectedReminders.includes(item.id as any);
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.reminderPill, isSelected && styles.reminderPillSelected]}
+                        onPress={() => handleToggleReminder && handleToggleReminder(item.id as any)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={isSelected ? 'checkmark-circle' : 'notifications-outline'}
+                          size={16}
+                          color={isSelected ? '#4B65E4' : '#666'}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[styles.reminderPillText, isSelected && styles.reminderPillTextSelected]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Payment Method Selector */}
@@ -479,6 +611,35 @@ const styles = StyleSheet.create({
   iosModalConfirmText: {
     color: '#4B65E4',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  reminderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  reminderPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reminderPillSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4B65E4',
+  },
+  reminderPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  reminderPillTextSelected: {
+    color: '#4B65E4',
     fontWeight: '600',
   },
 });

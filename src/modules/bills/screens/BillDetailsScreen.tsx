@@ -63,8 +63,8 @@ export default function BillDetailsScreen() {
     (vaultData as any)?.data?.sharedBill?.bills ||
     (vaultData as any)?.data?.bills;
 
-  const isLoading = isLoadingPersonal && !bill && isLoadingVault;
-  const isError = isErrorPersonal && !bill;
+  const isLoading = !bill && (isLoadingPersonal || (isErrorPersonal && isLoadingVault));
+  const isError = !bill && !isLoadingPersonal && (!isErrorPersonal || (!isLoadingVault && !vaultData));
 
   const refetch = () => {
     refetchPersonal();
@@ -190,7 +190,7 @@ export default function BillDetailsScreen() {
     );
   }
 
-  if (isError || !bill) {
+  if (isError) {
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
@@ -304,7 +304,7 @@ export default function BillDetailsScreen() {
         {bill.warranty_until ? (
           <View style={styles.card}>
              <View style={styles.cardHeaderRow}>
-               <Text style={styles.cardTitle}>WARRANTY</Text>
+               <Text style={styles.cardTitle}>WARRANTY & REMINDERS</Text>
              </View>
              <View style={styles.warrantyItem}>
                <Ionicons name="shield-checkmark-outline" size={24} color="#059669" />
@@ -319,6 +319,30 @@ export default function BillDetailsScreen() {
                  </View>
                ) : null}
              </View>
+
+             {bill.reminders && bill.reminders.length > 0 ? (
+               <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 }}>
+                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 8, letterSpacing: 0.5 }}>
+                   SCHEDULED REMINDERS
+                 </Text>
+                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                   {bill.reminders.map((r: string) => {
+                     const labelMap: Record<string, string> = {
+                       '30_DAYS': '30 Days Before',
+                       '7_DAYS': '7 Days Before',
+                       '1_DAY': '1 Day Before',
+                       '1_HOUR': '1 Hour Before',
+                     };
+                     return (
+                       <View key={r} style={styles.reminderBadge}>
+                         <Ionicons name="notifications-outline" size={13} color="#4B65E4" style={{ marginRight: 4 }} />
+                         <Text style={styles.reminderBadgeText}>{labelMap[r] || r}</Text>
+                       </View>
+                     );
+                   })}
+                 </View>
+               </View>
+             ) : null}
           </View>
         ) : null}
 
@@ -808,5 +832,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  reminderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  reminderBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4338CA',
   },
 });

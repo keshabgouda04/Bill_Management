@@ -233,7 +233,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Ionicons name="shield-checkmark" size={24} color="#0052CC" />
-            <Text style={styles.logoText}>BillVault</Text>
+            <Text style={styles.logoText}>Wallely</Text>
           </View>
           <TouchableOpacity>
             <Ionicons name="help-circle-outline" size={24} color="#666" />
@@ -389,7 +389,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
         {/* Footer */}
         <Text style={styles.footerText}>
-          © {new Date().getFullYear()} BillVault Security. All financial data is{'\n'}encrypted.
+          © {new Date().getFullYear()} Wallely Security. All financial data is{'\n'}encrypted.
         </Text>
 
       </KeyboardAvoidingView>

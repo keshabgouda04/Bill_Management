@@ -33,6 +33,7 @@ export interface Bill {
   created_at: string;
   updated_at: string;
   warranty_until?: Nullable<string>;
+  reminders?: Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>;
   purchase_location?: Nullable<string>;
   bill_items?: BillItem[];
   category_id?: Nullable<string>;

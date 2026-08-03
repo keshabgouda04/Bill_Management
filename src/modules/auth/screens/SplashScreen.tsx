@@ -48,7 +48,7 @@ export default function SplashScreen() {
           source={require('../../../assets/images/logo.jpg')}
           style={styles.logo}
         />
-        <Text style={styles.appName}>BillVault</Text>
+        <Text style={styles.appName}>Wallely</Text>
         <Text style={styles.tagline}>Your Smart Bill Manager</Text>
       </Animated.View>
     </LinearGradient>
