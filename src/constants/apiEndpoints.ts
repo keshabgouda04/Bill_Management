@@ -38,4 +38,11 @@ export const API_URL = {
     VAULT_DETAIL: (sharedBillId: string) => `/api/v1/family/vault/${sharedBillId}`,
     VAULT_VISIBILITY: (sharedBillId: string) => `/api/v1/family/vault/${sharedBillId}/visibility`,
   },
+  VISITING_CARDS: {
+    LIST: '/api/v1/visiting-cards',
+    CREATE: '/api/v1/visiting-cards',
+    DETAIL: (id: string) => `/api/v1/visiting-cards/${id}`,
+    UPDATE: (id: string) => `/api/v1/visiting-cards/${id}`,
+    DELETE: (id: string) => `/api/v1/visiting-cards/${id}`,
+  },
 };

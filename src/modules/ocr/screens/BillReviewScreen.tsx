@@ -77,9 +77,7 @@ export default function BillReviewScreen() {
   const [purchaseLocation, setPurchaseLocation] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return formatDateToDDMMYYYY(d);
+    return formatDateToDDMMYYYY(new Date());
   });
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [billCategory, setBillCategory] = useState('5085268a-da58-40a1-abfb-71f577bd4713'); // default to Others UUID

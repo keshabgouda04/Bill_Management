@@ -19,6 +19,7 @@ export type AppStackParamList = {
   MainTabs: undefined;
   Dashboard: undefined;
   Profile: undefined;
+  Cards: undefined;
   Categories: undefined;
   ViewBills: undefined;
   Search?: { initialQuery?: string };

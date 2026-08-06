@@ -36,7 +36,6 @@ export const formatDateToDDMMYYYY = (date: Date): string => {
 
 export const getYesterday = (): Date => {
   const d = new Date();
-  d.setDate(d.getDate() - 1);
   d.setHours(23, 59, 59, 999);
   return d;
 };

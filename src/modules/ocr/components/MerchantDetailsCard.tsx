@@ -123,14 +123,14 @@ export default function MerchantDetailsCard({
             const parts = purchaseDate.split('/');
             if (parts.length === 3) {
               const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-              const maxD = getYesterday();
+              const maxD = new Date();
               return d > maxD ? maxD : d;
             }
-            return getYesterday();
+            return new Date();
           })()}
           mode="date"
           display="default"
-          maximumDate={getYesterday()}
+          maximumDate={new Date()}
           onChange={(event, selectedDate) => {
             setShowPurchaseDatePicker(false);
             if (selectedDate) {

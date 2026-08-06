@@ -114,10 +114,6 @@ export const BottomTabBar = (props: Partial<BottomTabBarProps> & { onAddPress?: 
   const currentRouteName = state?.routes[state.index]?.name || 'Dashboard';
 
   const handleTabPress = (routeName: string) => {
-    if (routeName === 'Cards' || routeName === 'Alerts') {
-      // Visiting card page is not ready yet - do not navigate to any page
-      return;
-    }
     if (navigation && routeName) {
       navigation.navigate(routeName);
     }

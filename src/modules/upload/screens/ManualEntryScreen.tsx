@@ -169,7 +169,7 @@ export default function ManualEntryScreen() {
                 style={[styles.dateSelector, errors?.billDate ? styles.inputError : null]}
                 onPress={() => {
                   let current = parseDateTextToDate(billDate);
-                  const maxDate = getYesterday();
+                  const maxDate = new Date();
                   if (!billDate || current > maxDate) {
                     current = maxDate;
                   }
@@ -192,7 +192,7 @@ export default function ManualEntryScreen() {
                 value={tempDate}
                 mode="date"
                 display="default"
-                maximumDate={getYesterday()}
+                maximumDate={new Date()}
                 onChange={(event, selectedDate) => {
                   setShowPurchasePicker(false);
                   if (selectedDate && event.type !== 'dismissed') {
@@ -229,7 +229,7 @@ export default function ManualEntryScreen() {
                       value={tempDate}
                       mode="date"
                       display="spinner"
-                      maximumDate={getYesterday()}
+                      maximumDate={new Date()}
                       onChange={(event, selectedDate) => {
                         if (selectedDate) setTempDate(selectedDate);
                       }}
