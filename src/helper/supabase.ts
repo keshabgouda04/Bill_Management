@@ -8,13 +8,13 @@ const ENCRYPTION_KEY_NAME = 'supabase.auth.aes.key';
 
 class LargeSecureStore {
   private async getEncryptionKey(): Promise<Uint8Array> {
-    let keyStr = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
+    const keyStr = await SecureStore.getItemAsync(ENCRYPTION_KEY_NAME);
     if (!keyStr) {
       // Generate a new 256-bit key (32 bytes)
       const newKey = Crypto.getRandomBytes(32);
-      // Store it in hex format
-      keyStr = aesjs.utils.hex.fromBytes(newKey);
-      await SecureStore.setItemAsync(ENCRYPTION_KEY_NAME, keyStr);
+      const generatedKeyHex = aesjs.utils.hex.fromBytes(newKey);
+      await SecureStore.setItemAsync(ENCRYPTION_KEY_NAME, generatedKeyHex);
+      return aesjs.utils.hex.toBytes(generatedKeyHex);
     }
     return aesjs.utils.hex.toBytes(keyStr);
   }

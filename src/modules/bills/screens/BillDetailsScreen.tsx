@@ -59,7 +59,7 @@ export default function BillDetailsScreen() {
   const bill =
     personalData?.data?.bill ||
     vaultData?.bills ||
-    vaultData?.sharedBill?.bills ||
+    (vaultData as any)?.sharedBill?.bills ||
     (vaultData as any)?.data?.sharedBill?.bills ||
     (vaultData as any)?.data?.bills;
 
@@ -353,7 +353,7 @@ export default function BillDetailsScreen() {
           </View>
 
           {bill.bill_items && bill.bill_items.length > 0 ? (
-            bill.bill_items.map((item, index) => {
+            bill.bill_items.map((item: any, index: number) => {
               const hasItemTax = typeof item.tax_amount === 'number' && item.tax_amount > 0;
               const hasWarrantyMonths = typeof item.warranty_months === 'number' && item.warranty_months > 0;
 

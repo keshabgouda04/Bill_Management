@@ -51,7 +51,7 @@ export default function ProfileScreen() {
           return;
         }
         result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.8,
@@ -75,11 +75,11 @@ export default function ProfileScreen() {
       const asset = result.assets[0];
       const uri = asset.uri;
       const lowerUri = uri.toLowerCase();
-      const isAllowedFormat = lowerUri.endsWith('.jpg') || 
-                              lowerUri.endsWith('.jpeg') || 
-                              lowerUri.endsWith('.png') || 
-                              lowerUri.endsWith('.webp') || 
-                              lowerUri.endsWith('.heic');
+      const isAllowedFormat = lowerUri.endsWith('.jpg') ||
+        lowerUri.endsWith('.jpeg') ||
+        lowerUri.endsWith('.png') ||
+        lowerUri.endsWith('.webp') ||
+        lowerUri.endsWith('.heic');
 
       if (!isAllowedFormat) {
         Alert.alert('Invalid File', 'Only JPEG, PNG, WEBP, and HEIC image formats are supported.');
@@ -306,7 +306,7 @@ export default function ProfileScreen() {
                 <Text style={styles.avatarInitials}>{initials}</Text>
               </View>
             )}
-            
+
             {uploadAvatarMutation.isPending ? (
               <View style={styles.avatarUploadLoader}>
                 <ActivityIndicator size="small" color="#FFF" />

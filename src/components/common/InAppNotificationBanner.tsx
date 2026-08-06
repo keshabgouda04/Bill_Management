@@ -11,30 +11,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { handleNotificationTapPayload } from '../../services/messagingService';
 
-export interface InAppNotificationPayload {
-  title?: string;
-  body?: string;
-  remoteMessage?: any;
-}
+import {
+  subscribeInAppNotification,
+  triggerInAppNotification,
+  InAppNotificationPayload,
+} from '../../services/inAppNotificationService';
 
-type NotificationListener = (payload: InAppNotificationPayload) => void;
-const listeners: Set<NotificationListener> = new Set();
-
-/**
- * Trigger an in-app notification popup banner.
- */
-export function triggerInAppNotification(remoteMessage: any) {
-  const title = remoteMessage?.notification?.title || remoteMessage?.data?.title || 'Notification';
-  const body = remoteMessage?.notification?.body || remoteMessage?.data?.body || '';
-
-  const payload: InAppNotificationPayload = {
-    title,
-    body,
-    remoteMessage,
-  };
-
-  listeners.forEach((listener) => listener(payload));
-}
+export { triggerInAppNotification, InAppNotificationPayload };
 
 export default function InAppNotificationBanner() {
   const [notification, setNotification] = useState<InAppNotificationPayload | null>(null);
@@ -92,14 +75,14 @@ export default function InAppNotificationBanner() {
   ).current;
 
   useEffect(() => {
-    const handleEvent: NotificationListener = (payload) => {
+    const handleEvent = (payload: InAppNotificationPayload) => {
       setNotification(payload);
       showBanner();
     };
 
-    listeners.add(handleEvent);
+    const unsubscribe = subscribeInAppNotification(handleEvent);
     return () => {
-      listeners.delete(handleEvent);
+      unsubscribe();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);

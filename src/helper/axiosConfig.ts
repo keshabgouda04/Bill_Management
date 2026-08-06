@@ -60,7 +60,7 @@ axiosInstance.interceptors.response.use(
     }
 
     const errorData = error.response?.data as any;
-    
+
     if (error.response?.status !== 404) {
       console.error('API Error Details:', {
         url: error.config?.url,

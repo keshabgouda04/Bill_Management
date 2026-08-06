@@ -131,7 +131,7 @@ export const BottomTabBar = (props: Partial<BottomTabBarProps> & { onAddPress?: 
     }
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 0.9,
       });

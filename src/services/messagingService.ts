@@ -1,7 +1,7 @@
 import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import { registerFCMToken, removeFCMToken } from './mutation/notification/notification';
 import { navigate } from '../navigation/navigationRef';
-import { triggerInAppNotification } from '../components/common/InAppNotificationBanner';
+import { triggerInAppNotification } from './inAppNotificationService';
 
 /**
  * Safely access React Native Firebase v26 Messaging API & Instance.
