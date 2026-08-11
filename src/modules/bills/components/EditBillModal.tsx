@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BillDetail, PaymentStatus, UpdateBillPayload, useUpdateBill } from '../api/billsApi';
+import { CATEGORIES } from '../../upload/constants/categories';
+import { CategorySelectorModal } from '../../upload/components/CategorySelectorModal';
 
 interface EditBillModalProps {
   visible: boolean;
@@ -105,9 +107,17 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
   const [currency, setCurrency] = useState('INR');
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('PAID');
-  const [billCategory, setBillCategory] = useState('Other');
+  const [billCategory, setBillCategory] = useState('');
   const [warrantyUntil, setWarrantyUntil] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+  const handleToggleReminder = (type: '30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR') => {
+    setSelectedReminders((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
 
   const mutation = useUpdateBill();
 
@@ -125,8 +135,9 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
     setPaymentMethod(bill.payment_method || 'UPI');
     setPaymentStatus(bill.payment_status || 'PAID');
     setWarrantyUntil(formatDateInput(bill.warranty_until));
+    setSelectedReminders(bill.reminders || []);
     setNotes(bill.notes || '');
-    setBillCategory(bill.category_id || 'Other');
+    setBillCategory(bill.category_id || '');
 
     if (hasProducts) {
       setSubtotal(formatNumberInput(productsTotal));
@@ -307,6 +318,8 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
       }
     }
 
+    payload.reminders = selectedReminders;
+
     if (Object.keys(payload).length === 0) {
       Alert.alert('No Changes', 'Please update at least one field before saving.');
       return;
@@ -382,13 +395,56 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
             </View>
 
             <Text style={styles.fieldLabel}>Category</Text>
+            <TouchableOpacity
+              style={[styles.fieldInput, { justifyContent: 'center' }]}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ color: billCategory ? '#1A1A1A' : '#BBB', fontSize: 15 }}>
+                  {billCategory ? CATEGORIES.find((c) => c.id === billCategory)?.name : 'Select Category'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color="#888" />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Warranty Expiry Date</Text>
             <TextInput
               style={styles.fieldInput}
-              placeholder="e.g. Electronics, Food"
+              placeholder="DD/MM/YYYY"
               placeholderTextColor="#BBB"
-              value={billCategory}
-              onChangeText={setBillCategory}
+              value={warrantyUntil}
+              onChangeText={setWarrantyUntil}
             />
+
+            <Text style={styles.fieldLabel}>Remind Me Before Expiry</Text>
+            <View style={styles.reminderContainer}>
+              {[
+                { id: '30_DAYS', label: '30 Days' },
+                { id: '7_DAYS', label: '7 Days' },
+                { id: '1_DAY', label: '1 Day' },
+                { id: '1_HOUR', label: '1 Hour' },
+              ].map((item) => {
+                const isSelected = selectedReminders.includes(item.id as any);
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.reminderPill, isSelected && styles.reminderPillSelected]}
+                    onPress={() => handleToggleReminder(item.id as any)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'checkmark-circle' : 'notifications-outline'}
+                      size={14}
+                      color={isSelected ? '#4B65E4' : '#666'}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.reminderPillText, isSelected && styles.reminderPillTextSelected]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             <Text style={styles.sectionHeader}>Payment</Text>
 
@@ -491,6 +547,14 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
+
+      {/* Category Dropdown Modal */}
+      <CategorySelectorModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategoryId={billCategory}
+        onSelectCategory={setBillCategory}
+      />
     </Modal>
   );
 }
@@ -634,6 +698,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFF',
+  },
+  reminderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  reminderPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reminderPillSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4B65E4',
+  },
+  reminderPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  reminderPillTextSelected: {
+    color: '#4B65E4',
+    fontWeight: '600',
   },
 });
 

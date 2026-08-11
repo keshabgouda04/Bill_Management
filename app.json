@@ -1,21 +1,21 @@
 {
   "expo": {
-    "name": "Bill Management",
+    "name": "Wallely",
     "slug": "bill-management",
-    "scheme": "bill-management",
+    "scheme": "wallely",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.wallely",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#132D5B"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -23,7 +23,18 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "expo-dev-client",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e5c2ffdf-4a57-4641-a3e1-42e9a279b849"
+      }
+    },
+    "owner": "keshab00"
   }
 }

@@ -60,14 +60,17 @@ axiosInstance.interceptors.response.use(
     }
 
     const errorData = error.response?.data as any;
-    console.error('API Error Details:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      message: error.message,
-      code: error.code,
-      responseStatus: error.response?.status,
-      responseData: errorData,
-    });
+
+    if (error.response?.status !== 404) {
+      console.error('API Error Details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        message: error.message,
+        code: error.code,
+        responseStatus: error.response?.status,
+        responseData: errorData,
+      });
+    }
 
     let message = errorData?.message || error.message || `Request failed with status ${error.response?.status}`;
 
@@ -86,7 +89,9 @@ axiosInstance.interceptors.response.use(
       message = `${message}: ${JSON.stringify(errorData.error)}`;
     }
 
-    return Promise.reject(new Error(message));
+    // Preserve the original AxiosError structure but update the message
+    error.message = message;
+    return Promise.reject(error);
   }
 );
 

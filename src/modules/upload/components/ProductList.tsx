@@ -28,8 +28,7 @@ export const ProductList = ({
           <View style={{ flex: 1 }}>
             <Text style={styles.productName}>{p.itemName}</Text>
             <Text style={styles.productMeta}>
-              {p.quantity} × ₹{p.unitPrice} = ₹
-              {(parseFloat(p.quantity) * parseFloat(p.unitPrice)).toFixed(2)}
+              {p.quantity} × ₹{p.unitPrice} = ₹{(parseFloat(p.quantity) * parseFloat(p.unitPrice)).toFixed(2)}
             </Text>
             {!!p.description && <Text style={styles.productMeta}>{p.description}</Text>}
             {(!!p.serialNumber || !!p.warrantyMonths || !!p.taxAmount) && (
@@ -38,6 +37,7 @@ export const ProductList = ({
                   p.serialNumber ? `S/N: ${p.serialNumber}` : null,
                   p.warrantyMonths ? `Warranty: ${p.warrantyMonths} mo` : null,
                   p.taxAmount ? `Tax: ₹${p.taxAmount}` : null,
+                  p.taxAmount ? `Item Total: ₹${(parseFloat(p.quantity) * parseFloat(p.unitPrice) + parseFloat(p.taxAmount)).toFixed(2)}` : null,
                 ]
                   .filter(Boolean)
                   .join(' • ')}
@@ -54,7 +54,9 @@ export const ProductList = ({
       ))}
       <View style={styles.productTotalRow}>
         <Text style={styles.productTotalLabel}>Products Total</Text>
-        <Text style={styles.productTotalValue}>₹{productsTotal.toFixed(2)}</Text>
+        <Text style={styles.productTotalValue}>
+          ₹{(productsTotal + products.reduce((sum, p) => sum + (parseFloat(p.taxAmount) || 0), 0)).toFixed(2)}
+        </Text>
       </View>
     </View>
   );

@@ -44,6 +44,8 @@ export default function ManualEntryScreen() {
     setBillDate,
     showPurchasePicker,
     setShowPurchasePicker,
+    showWarrantyPicker,
+    setShowWarrantyPicker,
     tempDate,
     setTempDate,
     invoiceNumber,
@@ -60,6 +62,12 @@ export default function ManualEntryScreen() {
     setShowCategoryModal,
     billNotes,
     setBillNotes,
+    hasWarranty,
+    setHasWarranty,
+    warrantyUntil,
+    setWarrantyUntil,
+    selectedReminders = [],
+    handleToggleReminder,
     products,
     productName,
     setProductName,
@@ -85,6 +93,7 @@ export default function ManualEntryScreen() {
     handleSubmit,
     isPending,
     setSelectedFile,
+    errors,
   } = useManualEntryForm(() => navigation.goBack());
 
   return (
@@ -105,43 +114,62 @@ export default function ManualEntryScreen() {
           {/* Required Fields Group */}
           <Text style={styles.sectionHeader}>Required Information</Text>
 
+          {errors?.form && (
+            <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>{errors.form}</Text>
+            </View>
+          )}
+
           <Text style={styles.fieldLabel}>Bill Name / Merchant *</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.billName ? styles.inputError : null]}
             placeholder="e.g. Reliance Digital, Apple Store"
             placeholderTextColor="#BBB"
             value={billName}
             onChangeText={setBillName}
           />
+          {errors?.billName && <Text style={styles.errorText}>{errors.billName}</Text>}
 
           <Text style={styles.fieldLabel}>Invoice / Bill Number *</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.invoiceNumber ? styles.inputError : null]}
             placeholder="e.g. INV-1002"
             placeholderTextColor="#BBB"
             value={invoiceNumber}
             onChangeText={setInvoiceNumber}
           />
+          {errors?.invoiceNumber && <Text style={styles.errorText}>{errors.invoiceNumber}</Text>}
+
+          <Text style={styles.fieldLabel}>Category *</Text>
+          <TouchableOpacity
+            style={[styles.dateSelector, errors?.billCategory ? styles.inputError : null]}
+            onPress={() => setShowCategoryModal(true)}
+          >
+            <Text style={[styles.dateSelectorText, !billCategory && styles.placeholderText]}>
+              {billCategory ? CATEGORIES.find((c) => c.id === billCategory)?.name : 'Select Category'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#888" />
+          </TouchableOpacity>
+          {errors?.billCategory && <Text style={styles.errorText}>{errors.billCategory}</Text>}
 
           <View style={styles.row}>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Total Amount (₹) *</Text>
               <TextInput
-                style={styles.fieldInput}
-                placeholder="e.g. 15490"
+                style={[styles.fieldInput, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                placeholder="Total Amount"
                 placeholderTextColor="#BBB"
-                keyboardType="numeric"
                 value={billAmount}
-                onChangeText={(text) => setBillAmount(sanitizePrice(text))}
+                editable={false}
               />
             </View>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Purchase Date *</Text>
               <TouchableOpacity
-                style={styles.dateSelector}
+                style={[styles.dateSelector, errors?.billDate ? styles.inputError : null]}
                 onPress={() => {
                   let current = parseDateTextToDate(billDate);
-                  const maxDate = getYesterday();
+                  const maxDate = new Date();
                   if (!billDate || current > maxDate) {
                     current = maxDate;
                   }
@@ -155,6 +183,7 @@ export default function ManualEntryScreen() {
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#888" />
               </TouchableOpacity>
+              {errors?.billDate && <Text style={styles.errorText}>{errors.billDate}</Text>}
             </View>
 
             {/* Purchase Date Picker - Android */}
@@ -163,7 +192,7 @@ export default function ManualEntryScreen() {
                 value={tempDate}
                 mode="date"
                 display="default"
-                maximumDate={getYesterday()}
+                maximumDate={new Date()}
                 onChange={(event, selectedDate) => {
                   setShowPurchasePicker(false);
                   if (selectedDate && event.type !== 'dismissed') {
@@ -200,7 +229,60 @@ export default function ManualEntryScreen() {
                       value={tempDate}
                       mode="date"
                       display="spinner"
-                      maximumDate={getYesterday()}
+                      maximumDate={new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setTempDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+
+            {/* Warranty Date Picker - Android */}
+            {Platform.OS === 'android' && showWarrantyPicker && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowWarrantyPicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    setWarrantyUntil(formatDateToDDMMYYYY(selectedDate));
+                  }
+                }}
+              />
+            )}
+
+            {/* Warranty Date Picker - iOS Modal */}
+            {Platform.OS === 'ios' && (
+              <Modal
+                visible={showWarrantyPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowWarrantyPicker(false)}
+              >
+                <View style={styles.iosModalOverlay}>
+                  <View style={styles.iosModalContainer}>
+                    <View style={styles.iosModalHeader}>
+                      <TouchableOpacity onPress={() => setShowWarrantyPicker(false)}>
+                        <Text style={styles.iosModalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setWarrantyUntil(formatDateToDDMMYYYY(tempDate));
+                          setShowWarrantyPicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
                       onChange={(event, selectedDate) => {
                         if (selectedDate) setTempDate(selectedDate);
                       }}
@@ -213,6 +295,9 @@ export default function ManualEntryScreen() {
 
           {/* Products Section */}
           <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Products</Text>
+          {errors?.products && (
+            <Text style={[styles.errorText, { marginBottom: 10, marginTop: -5 }]}>{errors.products}</Text>
+          )}
 
           <ProductList
             products={products}
@@ -238,51 +323,123 @@ export default function ManualEntryScreen() {
             showProductExtras={showProductExtras}
             setShowProductExtras={setShowProductExtras}
             onAddProduct={handleAddProduct}
+            errors={errors}
           />
 
           {/* Optional Fields Group */}
           <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Additional Details (Optional)</Text>
 
-          <Text style={styles.fieldLabel}>Category</Text>
-          <TouchableOpacity
-            style={[styles.dateSelector, { marginBottom: 12 }]}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            <Text style={styles.dateSelectorText}>
-              {CATEGORIES.find((c) => c.id === billCategory)?.name || 'Others'}
-            </Text>
-            <Ionicons name="chevron-down" size={18} color="#888" />
-          </TouchableOpacity>
+
 
           <View style={styles.row}>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>
-                Tax Amount (₹){products.length > 0 ? ' (Auto)' : ''}
+                Tax Amount (₹) (Auto)
               </Text>
               <TextInput
                 style={[
                   styles.fieldInput,
-                  products.length > 0 && { backgroundColor: '#EAEAEA', color: '#666' }
+                  { backgroundColor: '#F3F4F6', color: '#6B7280' }
                 ]}
-                placeholder="e.g. 250"
+                placeholder="Total Tax"
                 placeholderTextColor="#BBB"
-                keyboardType="numeric"
                 value={taxAmount}
-                onChangeText={(text) => setTaxAmount(sanitizePrice(text))}
-                editable={products.length === 0}
+                editable={false}
               />
+              {errors?.taxAmount && <Text style={styles.errorText}>{errors.taxAmount}</Text>}
             </View>
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Discount (₹)</Text>
               <TextInput
-                style={styles.fieldInput}
+                style={[
+                  styles.fieldInput,
+                  (discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount
+                    ? { borderColor: '#EF4444', borderWidth: 1 }
+                    : null
+                ]}
                 placeholder="e.g. 100"
                 placeholderTextColor="#BBB"
                 keyboardType="numeric"
                 value={discountAmount}
                 onChangeText={(text) => setDiscountAmount(sanitizePrice(text))}
               />
+              {((discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount) && (
+                <Text style={styles.errorText}>
+                  {errors?.discountAmount || 'Must be less than total'}
+                </Text>
+              )}
             </View>
+          </View>
+
+          {/* Warranty & Reminder Section */}
+          <View style={{ marginTop: 14 }}>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}
+              onPress={() => setHasWarranty(!hasWarranty)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={hasWarranty ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={hasWarranty ? '#4B65E4' : '#888'}
+              />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginLeft: 8 }}>
+                Add Warranty Expiration
+              </Text>
+            </TouchableOpacity>
+
+            {hasWarranty && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={styles.fieldLabel}>Warranty Expiration Date</Text>
+                <TouchableOpacity
+                  style={[styles.dateSelector, errors?.warrantyUntil ? styles.inputError : null]}
+                  onPress={() => {
+                    let current = parseDateTextToDate(warrantyUntil);
+                    if (!warrantyUntil) current = new Date();
+                    setTempDate(current);
+                    setShowWarrantyPicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateSelectorText, !warrantyUntil && styles.placeholderText]}>
+                    {warrantyUntil || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#888" />
+                </TouchableOpacity>
+                {errors?.warrantyUntil && <Text style={styles.errorText}>{errors.warrantyUntil}</Text>}
+
+                {/* Remind Me Pills */}
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remind Me Before Expiry</Text>
+                <View style={styles.reminderContainer}>
+                  {[
+                    { id: '30_DAYS', label: '30 Days Before' },
+                    { id: '7_DAYS', label: '7 Days Before' },
+                    { id: '1_DAY', label: '1 Day Before' },
+                    { id: '1_HOUR', label: '1 Hour Before' },
+                  ].map((item) => {
+                    const isSelected = selectedReminders.includes(item.id as any);
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.reminderPill, isSelected && styles.reminderPillSelected]}
+                        onPress={() => handleToggleReminder && handleToggleReminder(item.id as any)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={isSelected ? 'checkmark-circle' : 'notifications-outline'}
+                          size={16}
+                          color={isSelected ? '#4B65E4' : '#666'}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[styles.reminderPillText, isSelected && styles.reminderPillTextSelected]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Payment Method Selector */}
@@ -387,6 +544,15 @@ const styles = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
     color: '#1A1A1A', backgroundColor: '#FAFAFA',
   },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '500',
+  },
   fieldInputMulti: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
 
   row: {
@@ -445,6 +611,35 @@ const styles = StyleSheet.create({
   iosModalConfirmText: {
     color: '#4B65E4',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  reminderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  reminderPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reminderPillSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4B65E4',
+  },
+  reminderPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  reminderPillTextSelected: {
+    color: '#4B65E4',
     fontWeight: '600',
   },
 });

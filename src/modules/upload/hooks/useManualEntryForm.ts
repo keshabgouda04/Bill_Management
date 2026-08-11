@@ -29,6 +29,7 @@ export const useManualEntryForm = (onClose: () => void) => {
   const [billName, setBillName] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billDate, setBillDate] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Date picker visibility states
   const [showPurchasePicker, setShowPurchasePicker] = useState(false);
@@ -40,13 +41,20 @@ export const useManualEntryForm = (onClose: () => void) => {
   const [taxAmount, setTaxAmount] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
-  const [billCategory, setBillCategory] = useState('b9bfcee8-6d48-4e17-9c07-b76fc4660e40'); // default to Others UUID
+  const [billCategory, setBillCategory] = useState(''); // no default category
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [billNotes, setBillNotes] = useState('');
 
-  // Warranty states
+  // Warranty & Reminders state
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>(['7_DAYS', '1_DAY']);
+
+  const handleToggleReminder = (type: '30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR') => {
+    setSelectedReminders((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
 
   // Products (bill_items) state
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,6 +78,26 @@ export const useManualEntryForm = (onClose: () => void) => {
       setTaxAmount(productsTaxTotal > 0 ? String(productsTaxTotal) : '0');
     }
   }, [products]);
+
+  const productsTotal = products.reduce((sum, p) => {
+    const qty = parseFloat(p.quantity) || 0;
+    const price = parseFloat(p.unitPrice) || 0;
+    return sum + qty * price;
+  }, 0);
+
+  // Auto-calculate Total Amount
+  useEffect(() => {
+    const subtotal = productsTotal || 0;
+    const tax = parseFloat(taxAmount) || 0;
+    const discount = parseFloat(discountAmount) || 0;
+    
+    const calculatedTotal = subtotal + tax - discount;
+    if (calculatedTotal >= 0) {
+      setBillAmount(String(calculatedTotal));
+    } else {
+      setBillAmount('0');
+    }
+  }, [productsTotal, taxAmount, discountAmount]);
 
   const handleSelectAttachment = async () => {
     try {
@@ -114,36 +142,44 @@ export const useManualEntryForm = (onClose: () => void) => {
   };
 
   const handleAddProduct = () => {
+    const newErrors: Record<string, string> = {};
+
     if (!productName.trim()) {
-      Alert.alert('Product Name Required', 'Please enter a product name.');
-      return;
+      newErrors.productName = 'Please enter a product name.';
     }
 
     const parsedPrice = parseFloat(productUnitPrice);
     if (!productUnitPrice.trim() || isNaN(parsedPrice) || parsedPrice < 0) {
-      Alert.alert('Invalid Price', 'Please enter a valid unit price.');
-      return;
+      newErrors.productUnitPrice = 'Please enter a valid unit price.';
     }
 
     const parsedQty = productQty.trim() ? parseFloat(productQty) : 1;
     if (isNaN(parsedQty) || parsedQty <= 0) {
-      Alert.alert('Invalid Quantity', 'Please enter a valid quantity.');
-      return;
+      newErrors.productQty = 'Please enter a valid quantity.';
     }
 
     const parsedTax = productTax.trim() ? parseFloat(productTax) : undefined;
-    if (parsedTax !== undefined && (isNaN(parsedTax) || parsedTax < 0)) {
-      Alert.alert('Invalid Tax', 'Please enter a valid tax amount for this item.');
-      return;
+    if (parsedTax !== undefined && (isNaN(parsedTax) || parsedTax < 0 || parsedTax >= parsedPrice)) {
+      newErrors.productTax = 'Tax amount must be less than the unit price.';
     }
 
     const parsedWarrantyMonths = productWarrantyMonths.trim()
       ? parseInt(productWarrantyMonths, 10)
       : undefined;
     if (parsedWarrantyMonths !== undefined && (isNaN(parsedWarrantyMonths) || parsedWarrantyMonths < 0)) {
-      Alert.alert('Invalid Warranty', 'Please enter a valid number of warranty months.');
+      newErrors.productWarrantyMonths = 'Please enter a valid number of warranty months.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
       return;
     }
+
+    // Clear product errors on success
+    setErrors(prev => {
+      const { productName, productUnitPrice, productQty, productTax, productWarrantyMonths, ...rest } = prev;
+      return rest;
+    });
 
     const newProduct: Product = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -171,72 +207,74 @@ export const useManualEntryForm = (onClose: () => void) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const productsTotal = products.reduce((sum, p) => {
-    const qty = parseFloat(p.quantity) || 0;
-    const price = parseFloat(p.unitPrice) || 0;
-    return sum + qty * price;
-  }, 0);
-
   const handleSubmit = () => {
+    const newErrors: Record<string, string> = {};
+
     // 1. Validation
     if (productName.trim()) {
-      Alert.alert(
-        'Unsaved Product Info',
-        'You have entered product details but have not tapped "Add Product". Please either save the product to the list first or clear the fields.'
-      );
-      return;
+      newErrors.form = 'You have unsaved product info. Please tap "Add Product" first.';
     }
 
-    if (!billName.trim() || !billAmount.trim() || !billDate.trim() || !invoiceNumber.trim()) {
-      Alert.alert('Required Fields', 'Please fill in Bill Name, Amount, Date, and Invoice Number.');
-      return;
-    }
+    if (!billName.trim()) newErrors.billName = 'Please enter a Bill Name/Merchant.';
+    if (!invoiceNumber.trim()) newErrors.invoiceNumber = 'Please enter an Invoice Number.';
+    if (!billDate.trim()) newErrors.billDate = 'Please select a Purchase Date.';
+    if (!billCategory) newErrors.billCategory = 'Please select a category.';
 
     const parsedAmount = parseFloat(billAmount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid total amount.');
-      return;
-    }
 
-    const isoDate = parseDateToISO(billDate.trim());
-    if (!isoDate) {
-      Alert.alert('Invalid Date', 'Please enter a valid purchase date in DD/MM/YYYY format.');
-      return;
+    let isoDate = '';
+    if (billDate.trim()) {
+      isoDate = parseDateToISO(billDate.trim()) || '';
+      if (!isoDate) {
+        newErrors.billDate = 'Please enter a valid date in DD/MM/YYYY format.';
+      }
     }
 
     // At least one product item is required
     if (products.length === 0) {
-      Alert.alert('Required Fields', 'At least one product item must be added.');
-      return;
+      newErrors.products = 'At least one product item must be added.';
     }
 
     // Optional numbers
     const parsedTax = taxAmount.trim() ? parseFloat(taxAmount) : undefined;
     if (parsedTax !== undefined && (isNaN(parsedTax) || parsedTax < 0)) {
-      Alert.alert('Invalid Tax', 'Please enter a valid tax amount.');
-      return;
+      newErrors.taxAmount = 'Please enter a valid tax amount.';
     }
 
     const parsedDiscount = discountAmount.trim() ? parseFloat(discountAmount) : undefined;
-    if (parsedDiscount !== undefined && (isNaN(parsedDiscount) || parsedDiscount < 0)) {
-      Alert.alert('Invalid Discount', 'Please enter a valid discount amount.');
-      return;
+    if (parsedDiscount !== undefined) {
+      if (isNaN(parsedDiscount) || parsedDiscount < 0) {
+        newErrors.discountAmount = 'Please enter a valid discount amount.';
+      } else {
+        const currentTax = parsedTax || 0;
+        if (parsedDiscount >= productsTotal + currentTax) {
+          newErrors.discountAmount = 'Discount must be less than the total price (Subtotal + Tax).';
+        }
+      }
     }
 
     // Warranty parsing
     let isoWarrantyDate: string | undefined = undefined;
     if (hasWarranty) {
       if (!warrantyUntil.trim()) {
-        Alert.alert('Warranty Field Required', 'Please enter a warranty expiration date.');
-        return;
+        newErrors.warrantyUntil = 'Please enter a warranty expiration date.';
+      } else {
+        const parsedWarranty = parseDateToISO(warrantyUntil.trim());
+        if (!parsedWarranty) {
+          newErrors.warrantyUntil = 'Please enter a valid date in DD/MM/YYYY format.';
+        } else {
+          isoWarrantyDate = parsedWarranty;
+        }
       }
-      const parsedWarranty = parseDateToISO(warrantyUntil.trim());
-      if (!parsedWarranty) {
-        Alert.alert('Invalid Warranty Date', 'Please enter a valid warranty date in DD/MM/YYYY format.');
-        return;
-      }
-      isoWarrantyDate = parsedWarranty;
     }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    // Clear all errors on successful validation
+    setErrors({});
 
     // Optional subtotal calculation
     const taxVal = parsedTax || 0;
@@ -255,10 +293,11 @@ export const useManualEntryForm = (onClose: () => void) => {
       setTaxAmount('');
       setDiscountAmount('');
       setPaymentMethod('UPI');
-      setBillCategory('b9bfcee8-6d48-4e17-9c07-b76fc4660e40');
+      setBillCategory('');
       setBillNotes('');
       setHasWarranty(false);
       setWarrantyUntil('');
+      setSelectedReminders(['7_DAYS', '1_DAY']);
       setProducts([]);
       setProductName('');
       setProductDescription('');
@@ -303,11 +342,14 @@ export const useManualEntryForm = (onClose: () => void) => {
 
     if (isoWarrantyDate) {
       formData.append('warranty_until', isoWarrantyDate);
+      if (selectedReminders.length > 0) {
+        formData.append('reminders', JSON.stringify(selectedReminders));
+      }
     }
     if (billNotes.trim()) {
       formData.append('notes', billNotes.trim());
     }
-    formData.append('category_id', billCategory);
+    formData.append('category_id', billCategory || '');
 
     const items = products.map((p) => ({
       item_name: p.itemName,
@@ -365,6 +407,9 @@ export const useManualEntryForm = (onClose: () => void) => {
     setHasWarranty,
     warrantyUntil,
     setWarrantyUntil,
+    selectedReminders,
+    setSelectedReminders,
+    handleToggleReminder,
     products,
     productName,
     setProductName,
@@ -390,5 +435,7 @@ export const useManualEntryForm = (onClose: () => void) => {
     handleRemoveProduct,
     handleSubmit,
     isPending: mutation.isPending,
+    errors,
+    setErrors,
   };
 };

@@ -4,11 +4,13 @@ import { DashboardScreen } from '../modules/dashboard';
 import { ViewBillsScreen } from '../modules/bills';
 import { CategoriesScreen } from '../modules/categories';
 import { ProfileScreen } from '../modules/profile';
+import { CardsScreen } from '../modules/cards';
 import { BottomTabBar } from './components/BottomTabBar';
 
 export type MainTabParamList = {
   Dashboard: undefined;
   ViewBills: undefined;
+  Cards: undefined;
   Categories: undefined;
   Profile: undefined;
 };
@@ -27,6 +29,7 @@ export default function BottomTabNavigator() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="ViewBills" component={ViewBillsScreen} />
+      <Tab.Screen name="Cards" component={CardsScreen} />
       <Tab.Screen name="Categories" component={CategoriesScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

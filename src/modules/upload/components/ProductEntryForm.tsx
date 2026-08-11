@@ -27,6 +27,7 @@ interface ProductEntryFormProps {
   showProductExtras: boolean;
   setShowProductExtras: (val: boolean) => void;
   onAddProduct: () => void;
+  errors?: Record<string, string>;
 }
 
 export const ProductEntryForm = ({
@@ -47,40 +48,44 @@ export const ProductEntryForm = ({
   showProductExtras,
   setShowProductExtras,
   onAddProduct,
+  errors,
 }: ProductEntryFormProps) => {
   return (
     <>
       <Text style={styles.fieldLabel}>Product Name *</Text>
       <TextInput
-        style={styles.fieldInput}
+        style={[styles.fieldInput, errors?.productName ? styles.inputError : null]}
         placeholder="e.g. iPhone Case"
         placeholderTextColor="#BBB"
         value={productName}
         onChangeText={setProductName}
       />
+      {errors?.productName && <Text style={styles.errorText}>{errors.productName}</Text>}
 
       <View style={styles.row}>
         <View style={styles.col}>
           <Text style={styles.fieldLabel}>Quantity</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.productQty ? styles.inputError : null]}
             placeholder="1"
             placeholderTextColor="#BBB"
             keyboardType="numeric"
             value={productQty}
             onChangeText={setProductQty}
           />
+          {errors?.productQty && <Text style={styles.errorText}>{errors.productQty}</Text>}
         </View>
         <View style={styles.col}>
           <Text style={styles.fieldLabel}>Unit Price (₹) *</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.productUnitPrice ? styles.inputError : null]}
             placeholder="e.g. 499"
             placeholderTextColor="#BBB"
             keyboardType="numeric"
             value={productUnitPrice}
             onChangeText={(text) => setProductUnitPrice(sanitizePrice(text))}
           />
+          {errors?.productUnitPrice && <Text style={styles.errorText}>{errors.productUnitPrice}</Text>}
         </View>
       </View>
 
@@ -123,25 +128,27 @@ export const ProductEntryForm = ({
             <View style={styles.col}>
               <Text style={styles.fieldLabel}>Warranty (months)</Text>
               <TextInput
-                style={styles.fieldInput}
+                style={[styles.fieldInput, errors?.productWarrantyMonths ? styles.inputError : null]}
                 placeholder="e.g. 12"
                 placeholderTextColor="#BBB"
                 keyboardType="numeric"
                 value={productWarrantyMonths}
                 onChangeText={setProductWarrantyMonths}
               />
+              {errors?.productWarrantyMonths && <Text style={styles.errorText}>{errors.productWarrantyMonths}</Text>}
             </View>
           </View>
 
           <Text style={styles.fieldLabel}>Item Tax Amount (₹)</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, errors?.productTax ? styles.inputError : null]}
             placeholder="e.g. 25"
             placeholderTextColor="#BBB"
             keyboardType="numeric"
             value={productTax}
             onChangeText={(text) => setProductTax(sanitizePrice(text))}
           />
+          {errors?.productTax && <Text style={styles.errorText}>{errors.productTax}</Text>}
         </>
       )}
 
@@ -159,6 +166,15 @@ const styles = StyleSheet.create({
     height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
     borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
     color: '#1A1A1A', backgroundColor: '#FAFAFA',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '500',
   },
   row: {
     flexDirection: 'row',

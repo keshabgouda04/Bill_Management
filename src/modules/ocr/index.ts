@@ -5,3 +5,6 @@ export { default as MerchantDetailsCard } from './components/MerchantDetailsCard
 export { default as WarrantyCard } from './components/WarrantyCard';
 export { default as LineItemsCard } from './components/LineItemsCard';
 export { default as AmountsSummaryCard } from './components/AmountsSummaryCard';
+export { useScanOcrDocument, postScanOcrDocument } from '../../services/mutation/ocr/ocrMutation';
+export type { OcrScanResponse, OcrStructuredData, OcrFileInput } from '../../services/mutation/ocr/ocrMutation';
+
