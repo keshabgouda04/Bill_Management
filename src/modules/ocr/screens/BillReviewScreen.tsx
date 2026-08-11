@@ -4,287 +4,425 @@ import {
   Text,
   View,
   TouchableOpacity,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
 import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import OcrScannerOverlay from '../components/OcrScannerOverlay';
-import FileAttachmentBanner from '../components/FileAttachmentBanner';
-import MerchantDetailsCard from '../components/MerchantDetailsCard';
-import WarrantyCard from '../components/WarrantyCard';
-import LineItemsCard from '../components/LineItemsCard';
-import AmountsSummaryCard from '../components/AmountsSummaryCard';
+import { CATEGORIES } from '../../upload/constants/categories';
+import { CategorySelectorModal } from '../../upload/components/CategorySelectorModal';
+import { PaymentMethodSelector } from '../../upload/components/PaymentMethodSelector';
+import { AttachmentSelector } from '../../upload/components/AttachmentSelector';
+import { ProductList } from '../../upload/components/ProductList';
+import { ProductEntryForm } from '../../upload/components/ProductEntryForm';
+import type { Product } from '../../upload/hooks/useManualEntryForm';
+import {
+  parseDateToISO,
+  parseDateTextToDate,
+  formatDateToDDMMYYYY,
+  sanitizePrice,
+} from '../../upload/utils/uploadUtils';
 
-import { useCreateBill } from '../../bills/api/billsApi';
+import { useCreateManualBill } from '../../bills/api/billsApi';
+import { useScanOcrDocument } from '../../../services/mutation/ocr/ocrMutation';
 import type { AppStackParamList } from '../../../navigation/AppNavigator';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'BillReview'>;
 type BillReviewRoute = RouteProp<AppStackParamList, 'BillReview'>;
-
-interface ProductItem {
-  id: string;
-  itemName: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  taxAmount: number;
-  serialNumber?: string;
-  warrantyMonths?: number;
-}
-
-const formatDateToDDMMYYYY = (date: Date): string => {
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
-
-const parseDateToISO = (dateStr: string): string | null => {
-  if (!dateStr.trim()) return null;
-  const parts = dateStr.split('/');
-  if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1;
-    const year = parseInt(parts[2], 10);
-    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-      const date = new Date(year, month, day, 12, 0, 0);
-      return date.toISOString();
-    }
-  }
-  return null;
-};
 
 export default function BillReviewScreen() {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<BillReviewRoute>();
   const { fileUri, fileName, fileType } = route.params;
 
-  const createBillMutation = useCreateBill();
+  const createBillMutation = useCreateManualBill();
+  const scanOcrMutation = useScanOcrDocument();
 
-  // OCR Simulator Loading State
+  // Linking documentId returned from POST /api/v1/ocr
+  const [ocrDocumentId, setOcrDocumentId] = useState<string | null>(null);
+
+  // OCR Loading & Error State
   const [isScanning, setIsScanning] = useState(true);
-  const [scanningProgress, setScanningProgress] = useState(0);
-  const [scanningStatus, setScanningStatus] = useState('📂 Loading document source...');
+  const [scanningProgress, setScanningProgress] = useState(10);
+  const [scanningStatus, setScanningStatus] = useState('📂 Uploading document to OCR server...');
+  const [scanError, setScanError] = useState<string | null>(null);
 
-  // General Bill States
-  const [purchaseLocation, setPurchaseLocation] = useState('');
+  // Form Fields (matching normal bill upload UI)
+  const [billName, setBillName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(() => {
-    return formatDateToDDMMYYYY(new Date());
-  });
-  const [paymentMethod, setPaymentMethod] = useState('UPI');
-  const [billCategory, setBillCategory] = useState('5085268a-da58-40a1-abfb-71f577bd4713'); // default to Others UUID
-  const [notes, setNotes] = useState('');
-  const [discountAmount, setDiscountAmount] = useState('0');
-  const [manualTotalAmount, setManualTotalAmount] = useState('');
-  const [isTotalOverwritten, setIsTotalOverwritten] = useState(false);
+  const [billCategory, setBillCategory] = useState('');
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [billAmount, setBillAmount] = useState('');
+  const [billDate, setBillDate] = useState(() => formatDateToDDMMYYYY(new Date()));
 
-  // Warranty
+  // Date picker modal states
+  const [showPurchasePicker, setShowPurchasePicker] = useState(false);
+  const [showWarrantyPicker, setShowWarrantyPicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
+
+  // Products
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productName, setProductName] = useState('');
+  const [productDescription, setProductDescription] = useState('');
+  const [productQty, setProductQty] = useState('1');
+  const [productUnitPrice, setProductUnitPrice] = useState('');
+  const [productTax, setProductTax] = useState('');
+  const [productSerialNumber, setProductSerialNumber] = useState('');
+  const [productWarrantyMonths, setProductWarrantyMonths] = useState('');
+  const [showProductExtras, setShowProductExtras] = useState(false);
+
+  // Optional Fields
+  const [taxAmount, setTaxAmount] = useState('0.00');
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
+  const [billNotes, setBillNotes] = useState('');
+
+  // Warranty & Reminders
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>(['7_DAYS', '1_DAY']);
 
-  // Items / Products
-  const [products, setProducts] = useState<ProductItem[]>([]);
+  // Attachment
+  const [selectedFile, setSelectedFile] = useState<any>({
+    uri: fileUri,
+    name: fileName,
+    mimeType: fileType,
+  });
 
-  // Run simulated OCR scanning on mount
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Product Calculations
+  const productsTotal = useMemo(() => {
+    return products.reduce((sum, p) => {
+      const qty = parseFloat(p.quantity) || 0;
+      const price = parseFloat(p.unitPrice) || 0;
+      return sum + qty * price;
+    }, 0);
+  }, [products]);
+
+  const calculatedTaxAmount = useMemo(() => {
+    return products.reduce((sum, p) => {
+      const tax = parseFloat(p.taxAmount) || 0;
+      return sum + tax;
+    }, 0).toFixed(2);
+  }, [products]);
+
   useEffect(() => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setScanningProgress(progress);
+    setTaxAmount(calculatedTaxAmount);
+  }, [calculatedTaxAmount]);
 
-      if (progress === 30) {
-        setScanningStatus('🔍 Running OCR text extraction...');
-      } else if (progress === 60) {
-        setScanningStatus('🤖 Categorizing items & matching prices...');
-      } else if (progress === 90) {
-        setScanningStatus('⚡ Finalizing bill data schema...');
-      } else if (progress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          // Pre-fill parsed fields dynamically based on filename
-          const lowerName = fileName.toLowerCase();
-          if (lowerName.includes('apple') || lowerName.includes('iphone') || lowerName.includes('macbook')) {
-            setPurchaseLocation('Apple Store');
-            setInvoiceNumber('APL-INF-89028');
-            setBillCategory('efd8855d-a6c5-45ce-9c11-8025c6cb8c89'); // Electronics UUID
-            setPaymentMethod('CARD');
-            setProducts([
-              {
-                id: '1',
-                itemName: 'iPhone 15 Case - Navy Blue',
-                description: 'Silicone Case with MagSafe',
-                quantity: 1,
-                unitPrice: 4900,
-                taxAmount: 882,
-              },
-              {
-                id: '2',
-                itemName: 'USB-C Woven Charge Cable (1m)',
-                description: '60W power delivery cable',
-                quantity: 1,
-                unitPrice: 1900,
-                taxAmount: 342,
-              }
-            ]);
-            setHasWarranty(true);
-            const nextYear = new Date();
-            nextYear.setFullYear(nextYear.getFullYear() + 1);
-            setWarrantyUntil(formatDateToDDMMYYYY(nextYear));
-          } else if (lowerName.includes('electric') || lowerName.includes('power') || lowerName.includes('utility') || lowerName.includes('water')) {
-            setPurchaseLocation('Power Grid Corp');
-            setInvoiceNumber('EL-294719-2026');
-            setBillCategory('ba621ad1-a786-44c6-ae6e-13f53380a75c'); // Utilities UUID
-            setPaymentMethod('NET_BANKING');
-            setProducts([
-              { 
-                id: '1',
-                itemName: 'Electricity Charge (July 2026)',
-                description: 'Domestic electricity bill usage',
-                quantity: 1,
-                unitPrice: 3950,
-                taxAmount: 250,
-              }
-            ]);
-          } else {
-            // Default Smart Mock
-            setPurchaseLocation('Reliance Retail');
-            setInvoiceNumber('REL-889312');
-            setBillCategory('83043609-6e75-4d93-82b9-c439deec42d2'); // Shopping UUID
-            setPaymentMethod('UPI');
-            setProducts([
-              {
-                id: '1',
-                itemName: 'Organic Almonds 500g',
-                description: 'Premium raw California almonds',
-                quantity: 2,
-                unitPrice: 450,
-                taxAmount: 45,
-              },
-              {
-                id: '2',
-                itemName: 'Fresh Strawberries Pack',
-                description: 'Local farm fresh berries',
-                quantity: 1,
-                unitPrice: 250,
-                taxAmount: 12,
-              },
-              {
-                id: '3',
-                itemName: 'Natural Yogurt 1kg',
-                description: 'Probiotic high protein yogurt',
-                quantity: 1,
-                unitPrice: 150,
-                taxAmount: 0,
-              }
-            ]);
-          }
-          setIsScanning(false);
-        }, 300);
+  useEffect(() => {
+    const taxVal = parseFloat(calculatedTaxAmount) || 0;
+    const discVal = parseFloat(discountAmount) || 0;
+    const tot = productsTotal + taxVal - discVal;
+    if (tot >= 0) {
+      setBillAmount(tot.toFixed(2));
+    }
+  }, [productsTotal, calculatedTaxAmount, discountAmount]);
+
+  // Execute real backend OCR scanning
+  const runOcrScan = async () => {
+    setIsScanning(true);
+    setScanError(null);
+    setScanningProgress(20);
+    setScanningStatus('📂 Sending document to OCR server...');
+
+    try {
+      setScanningProgress(50);
+      setScanningStatus('🔍 Extracting invoice data with AI...');
+
+      const response = await scanOcrMutation.mutateAsync({
+        uri: fileUri,
+        fileName,
+        fileType,
+      });
+
+      setScanningProgress(85);
+      setScanningStatus('⚡ Processing structured fields...');
+
+      const resData = (response as any)?.data || response;
+      const documentId = resData?.documentId || resData?.document_id;
+      const structured = resData?.structured || resData?.data?.structured || {};
+
+      console.log('=== OCR SCAN RESULT ===');
+      console.log('Raw Response:', JSON.stringify(response, null, 2));
+      console.log('Document ID:', documentId);
+      console.log('Structured Data:', JSON.stringify(structured, null, 2));
+      console.log('=======================');
+
+      if (documentId) {
+        setOcrDocumentId(documentId);
       }
-    }, 200);
 
-    return () => clearInterval(interval);
-  }, [fileName]);
+      // Pre-fill form fields
+      const storeName = structured.purchase_location || structured.merchant_name;
+      if (storeName) setBillName(storeName);
+      if (structured.invoice_number) setInvoiceNumber(structured.invoice_number);
+      if (structured.notes) setBillNotes(structured.notes);
 
-  // Calculations
-  const subtotal = useMemo(() => {
-    return products.reduce((sum, p) => sum + p.quantity * p.unitPrice, 0);
-  }, [products]);
+      // Match category
+      const rawCat = structured.category_id || structured.category;
+      if (rawCat) {
+        const found = CATEGORIES.find(
+          (c) => c.id === rawCat || c.name.toLowerCase() === String(rawCat).toLowerCase()
+        );
+        if (found) {
+          setBillCategory(found.id);
+        } else {
+          setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933'); // Others fallback
+        }
+      } else {
+        setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933');
+      }
 
-  const taxAmount = useMemo(() => {
-    return products.reduce((sum, p) => sum + p.taxAmount, 0);
-  }, [products]);
+      // Payment method
+      if (structured.payment_method) {
+        const pm = String(structured.payment_method).toUpperCase();
+        if (['UPI', 'CARD', 'CASH', 'NET_BANKING'].includes(pm)) {
+          setPaymentMethod(pm as any);
+        }
+      }
 
-  const calculatedTotalAmount = useMemo(() => {
-    const disc = parseFloat(discountAmount) || 0;
-    return subtotal + taxAmount - disc;
-  }, [subtotal, taxAmount, discountAmount]);
+      // Purchase date
+      if (structured.purchase_date) {
+        const dateObj = new Date(structured.purchase_date);
+        if (!isNaN(dateObj.getTime())) {
+          setBillDate(formatDateToDDMMYYYY(dateObj));
+        } else if (typeof structured.purchase_date === 'string') {
+          setBillDate(structured.purchase_date);
+        }
+      }
 
-  const finalTotalAmount = isTotalOverwritten ? parseFloat(manualTotalAmount) || 0 : calculatedTotalAmount;
+      // Amounts
+      if (typeof structured.total_amount === 'number' || typeof structured.total_amount === 'string') {
+        setBillAmount(String(structured.total_amount));
+      }
+      if (typeof structured.discount_amount === 'number' || typeof structured.discount_amount === 'string') {
+        setDiscountAmount(String(structured.discount_amount));
+      }
 
-  // Add Item to list
-  const handleAddProduct = (item: { itemName: string; quantity: number; unitPrice: number; taxAmount: number }) => {
-    const newItem: ProductItem = {
+      // Warranty
+      if (structured.warranty_until) {
+        const wDate = new Date(structured.warranty_until);
+        if (!isNaN(wDate.getTime())) {
+          setHasWarranty(true);
+          setWarrantyUntil(formatDateToDDMMYYYY(wDate));
+        }
+      }
+
+      // Line items / products
+      if (Array.isArray(structured.bill_items) && structured.bill_items.length > 0) {
+        const parsedProducts: Product[] = structured.bill_items.map((item: any, idx: number) => ({
+          id: item.id || `${Date.now()}_${idx}`,
+          itemName: item.item_name || item.name || `Item ${idx + 1}`,
+          description: item.description || '',
+          quantity: String(item.quantity || 1),
+          unitPrice: String(item.unit_price || item.unitPrice || 0),
+          taxAmount: String(item.tax_amount || item.taxAmount || 0),
+          serialNumber: item.serial_number || item.serialNumber || '',
+          warrantyMonths: String(item.warranty_months || item.warrantyMonths || ''),
+        }));
+        setProducts(parsedProducts);
+      }
+
+      setScanningProgress(100);
+      setTimeout(() => {
+        setIsScanning(false);
+      }, 300);
+    } catch (err: any) {
+      console.warn('OCR Scanning backend failed, falling back:', err?.message || err);
+      // Fallback pre-fill if OCR fails
+      const lowerName = fileName.toLowerCase();
+      if (lowerName.includes('apple') || lowerName.includes('iphone')) {
+        setBillName('Apple Store');
+        setInvoiceNumber('APL-INF-89028');
+        setBillCategory('6afcb160-d087-4e06-9523-8e5c8050b110'); // Electronics
+        setPaymentMethod('CARD');
+      } else {
+        setBillName('');
+        setInvoiceNumber('');
+        setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933');
+      }
+      setScanError(err.response?.data?.message || err.message || 'OCR processing failed.');
+      setIsScanning(false);
+    }
+  };
+
+  useEffect(() => {
+    runOcrScan();
+  }, [fileUri, fileName]);
+
+  // Product addition
+  const handleAddProduct = () => {
+    const newErr: Record<string, string> = {};
+    if (!productName.trim()) newErr.productName = 'Product name is required';
+    if (!productUnitPrice.trim()) newErr.productUnitPrice = 'Unit price is required';
+
+    if (Object.keys(newErr).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErr }));
+      return;
+    }
+
+    const newProd: Product = {
       id: `${Date.now()}`,
-      itemName: item.itemName,
-      description: '',
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      taxAmount: item.taxAmount,
+      itemName: productName.trim(),
+      description: productDescription.trim(),
+      quantity: productQty.trim() || '1',
+      unitPrice: productUnitPrice.trim(),
+      taxAmount: productTax.trim() || '0',
+      serialNumber: productSerialNumber.trim(),
+      warrantyMonths: productWarrantyMonths.trim(),
     };
-    setProducts((prev) => [...prev, newItem]);
+
+    setProducts((prev) => [...prev, newProd]);
+    setProductName('');
+    setProductDescription('');
+    setProductQty('1');
+    setProductUnitPrice('');
+    setProductTax('');
+    setProductSerialNumber('');
+    setProductWarrantyMonths('');
+    setShowProductExtras(false);
+    setErrors({});
   };
 
   const handleRemoveProduct = (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Submit / Save
+  const handleSelectAttachment = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        setSelectedFile({
+          uri: file.uri,
+          name: file.name || 'document.pdf',
+          type: file.mimeType || 'application/pdf',
+          size: file.size,
+        });
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to pick attachment.');
+    }
+  };
+
+  const handleToggleReminder = (id: '30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR') => {
+    setSelectedReminders((prev) =>
+      prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]
+    );
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Discard Changes',
+      'Are you sure you want to discard this bill review? Any corrections will be lost.',
+      [
+        { text: 'Keep Editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+      ]
+    );
+  };
+
+  // Submit / Save Bill
   const handleSaveBill = () => {
-    if (!purchaseLocation.trim()) {
-      Alert.alert('Required Info', 'Please enter merchant / store name.');
+    const errMap: Record<string, string> = {};
+    if (!billName.trim()) errMap.billName = 'Merchant / Store name is required';
+    if (!invoiceNumber.trim()) errMap.invoiceNumber = 'Invoice number is required';
+    if (!billCategory) errMap.billCategory = 'Please select a category';
+    if (!billDate.trim()) errMap.billDate = 'Purchase date is required';
+
+    if (Object.keys(errMap).length > 0) {
+      setErrors(errMap);
       return;
     }
 
-    if (!invoiceNumber.trim()) {
-      Alert.alert('Required Info', 'Please enter invoice number.');
-      return;
-    }
-
-    const isoPurchaseDate = parseDateToISO(purchaseDate);
+    const isoPurchaseDate = parseDateToISO(billDate);
     if (!isoPurchaseDate) {
-      Alert.alert('Invalid Date', 'Please enter purchase date in DD/MM/YYYY format.');
+      setErrors({ billDate: 'Invalid date format (use DD/MM/YYYY)' });
       return;
     }
 
     let isoWarrantyDate: string | null = null;
     if (hasWarranty) {
       if (!warrantyUntil.trim()) {
-        Alert.alert('Required Info', 'Please specify the warranty expiration date.');
+        setErrors({ warrantyUntil: 'Warranty expiration date is required' });
         return;
       }
       isoWarrantyDate = parseDateToISO(warrantyUntil);
       if (!isoWarrantyDate) {
-        Alert.alert('Invalid Date', 'Please enter warranty expiration date in DD/MM/YYYY format.');
+        setErrors({ warrantyUntil: 'Invalid date format (use DD/MM/YYYY)' });
         return;
       }
     }
 
-    const payload = {
-      purchase_location: purchaseLocation.trim(),
-      invoice_number: invoiceNumber.trim(),
-      purchase_date: isoPurchaseDate,
-      subtotal: subtotal || finalTotalAmount,
-      tax_amount: taxAmount || undefined,
-      discount_amount: parseFloat(discountAmount) || undefined,
-      total_amount: finalTotalAmount,
-      currency: 'INR',
-      payment_method: paymentMethod,
-      payment_status: 'PAID',
-      bill_status: 'DRAFT',
-      category_id: billCategory,
-      notes: notes.trim() || undefined,
-      warranty_until: isoWarrantyDate,
-      receipt_url: fileUri,
-      bill_items: products.length
-        ? products.map((p) => ({
-            item_name: p.itemName,
-            quantity: p.quantity,
-            unit_price: p.unitPrice,
-            tax_amount: p.taxAmount || undefined,
-          }))
-        : undefined,
-    };
+    const numericTotal = parseFloat(billAmount) || productsTotal || 0;
 
-    createBillMutation.mutate(payload as any, {
+    const formData = new FormData();
+    formData.append('purchase_location', billName.trim());
+    formData.append('invoice_number', invoiceNumber.trim());
+    formData.append('purchase_date', isoPurchaseDate);
+    formData.append('total_amount', numericTotal.toString());
+    formData.append('currency', 'INR');
+    formData.append('payment_method', paymentMethod);
+    formData.append('payment_status', 'PAID');
+    formData.append('bill_status', 'DRAFT');
+    formData.append('category_id', billCategory || '');
+
+    if (productsTotal > 0) formData.append('subtotal', productsTotal.toString());
+    if (parseFloat(taxAmount) > 0) formData.append('tax_amount', parseFloat(taxAmount).toString());
+    if (parseFloat(discountAmount) > 0) formData.append('discount_amount', parseFloat(discountAmount).toString());
+    if (billNotes.trim()) formData.append('notes', billNotes.trim());
+    if (isoWarrantyDate) {
+      formData.append('warranty_until', isoWarrantyDate);
+      if (hasWarranty && selectedReminders.length > 0) {
+        formData.append('reminders', JSON.stringify(selectedReminders));
+      }
+    }
+    if (ocrDocumentId) formData.append('ocr_document_id', ocrDocumentId);
+
+    if (products.length > 0) {
+      const items = products.map((p) => {
+        const item: any = {
+          item_name: p.itemName,
+          quantity: parseFloat(p.quantity) || 1,
+          unit_price: parseFloat(p.unitPrice) || 0,
+        };
+        if (p.description) item.description = p.description;
+        if (parseFloat(p.taxAmount) > 0) item.tax_amount = parseFloat(p.taxAmount);
+        if (p.serialNumber) item.serial_number = p.serialNumber;
+        if (parseFloat(p.warrantyMonths) > 0) item.warranty_months = parseFloat(p.warrantyMonths);
+        return item;
+      });
+      formData.append('bill_items', JSON.stringify(items));
+    }
+
+    const fileToUpload = selectedFile || (fileUri ? { uri: fileUri, name: fileName || 'scanned_bill.jpg', mimeType: fileType || 'image/jpeg' } : null);
+    if (fileToUpload && fileToUpload.uri) {
+      formData.append('attachments', {
+        uri: fileToUpload.uri,
+        name: fileToUpload.name || fileToUpload.fileName || 'scanned_bill.jpg',
+        type: fileToUpload.mimeType || fileToUpload.type || fileToUpload.fileType || 'image/jpeg',
+      } as any);
+    }
+
+    createBillMutation.mutate(formData as any, {
       onSuccess: () => {
         Alert.alert('Success', 'Bill uploaded and saved successfully!', [
           {
@@ -301,17 +439,6 @@ export default function BillReviewScreen() {
     });
   };
 
-  const handleCancel = () => {
-    Alert.alert(
-      'Discard Changes',
-      'Are you sure you want to discard this bill review? Any corrections will be lost.',
-      [
-        { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
-      ]
-    );
-  };
-
   if (isScanning) {
     return (
       <OcrScannerOverlay
@@ -325,134 +452,592 @@ export default function BillReviewScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
 
-      {/* Header */}
+      {/* Header matching normal bill upload screen */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={handleCancel}>
-          <Ionicons name="close-circle-outline" size={26} color="#555" />
+        <TouchableOpacity style={styles.backButton} onPress={handleCancel}>
+          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Review Extracted Bill</Text>
-        <View style={{ width: 28 }} />
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Document Attachment Banner */}
-        <FileAttachmentBanner
-          fileName={fileName}
-          fileUri={fileUri}
-          fileType={fileType}
-        />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.contentContainer}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+          {scanError && (
+            <View style={styles.scanErrorBanner}>
+              <Ionicons name="warning-outline" size={20} color="#D97706" style={{ marginRight: 8 }} />
+              <Text style={styles.scanErrorText}>
+                Automatic extraction notice: {scanError}. Please review and complete fields below manually.
+              </Text>
+              <TouchableOpacity onPress={runOcrScan} style={styles.retryScanBtn}>
+                <Ionicons name="refresh" size={14} color="#D97706" />
+                <Text style={styles.retryScanText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {/* General Form Fields Card */}
-        <MerchantDetailsCard
-          purchaseLocation={purchaseLocation}
-          setPurchaseLocation={setPurchaseLocation}
-          invoiceNumber={invoiceNumber}
-          setInvoiceNumber={setInvoiceNumber}
-          purchaseDate={purchaseDate}
-          setPurchaseDate={setPurchaseDate}
-          paymentMethod={paymentMethod}
-          setPaymentMethod={setPaymentMethod}
-          billCategory={billCategory}
-          setBillCategory={setBillCategory}
-          notes={notes}
-          setNotes={setNotes}
-        />
+          {/* Required Fields Group */}
+          <Text style={styles.sectionHeader}>Required Information</Text>
 
-        {/* Warranty Settings Card */}
-        <WarrantyCard
-          hasWarranty={hasWarranty}
-          setHasWarranty={setHasWarranty}
-          warrantyUntil={warrantyUntil}
-          setWarrantyUntil={setWarrantyUntil}
-        />
+          {errors?.form && (
+            <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>{errors.form}</Text>
+            </View>
+          )}
 
-        {/* Line Items Card */}
-        <LineItemsCard
-          products={products}
-          onRemoveProduct={handleRemoveProduct}
-          onAddProduct={handleAddProduct}
-        />
+          <Text style={styles.fieldLabel}>Bill Name / Merchant *</Text>
+          <TextInput
+            style={[styles.fieldInput, errors?.billName ? styles.inputError : null]}
+            placeholder="e.g. Reliance Digital, Apple Store"
+            placeholderTextColor="#BBB"
+            value={billName}
+            onChangeText={setBillName}
+          />
+          {errors?.billName && <Text style={styles.errorText}>{errors.billName}</Text>}
 
-        {/* Totals Summary Card */}
-        <AmountsSummaryCard
-          subtotal={subtotal}
-          taxAmount={taxAmount}
-          discountAmount={discountAmount}
-          setDiscountAmount={setDiscountAmount}
-          calculatedTotalAmount={calculatedTotalAmount}
-          isTotalOverwritten={isTotalOverwritten}
-          setIsTotalOverwritten={setIsTotalOverwritten}
-          manualTotalAmount={manualTotalAmount}
-          setManualTotalAmount={setManualTotalAmount}
-        />
+          <Text style={styles.fieldLabel}>Invoice / Bill Number *</Text>
+          <TextInput
+            style={[styles.fieldInput, errors?.invoiceNumber ? styles.inputError : null]}
+            placeholder="e.g. INV-1002"
+            placeholderTextColor="#BBB"
+            value={invoiceNumber}
+            onChangeText={setInvoiceNumber}
+          />
+          {errors?.invoiceNumber && <Text style={styles.errorText}>{errors.invoiceNumber}</Text>}
 
-        {/* Save and Discard CTA */}
-        <View style={styles.actionBlock}>
+          <Text style={styles.fieldLabel}>Category *</Text>
           <TouchableOpacity
-            style={[styles.saveBtn, createBillMutation.isPending && styles.saveBtnDisabled]}
+            style={[styles.dateSelector, errors?.billCategory ? styles.inputError : null]}
+            onPress={() => setShowCategoryModal(true)}
+          >
+            <Text style={[styles.dateSelectorText, !billCategory && styles.placeholderText]}>
+              {billCategory ? CATEGORIES.find((c) => c.id === billCategory)?.name : 'Select Category'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color="#888" />
+          </TouchableOpacity>
+          {errors?.billCategory && <Text style={styles.errorText}>{errors.billCategory}</Text>}
+
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Text style={styles.fieldLabel}>Total Amount (₹) *</Text>
+              <TextInput
+                style={[styles.fieldInput, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                placeholder="Total Amount"
+                placeholderTextColor="#BBB"
+                value={billAmount}
+                editable={false}
+              />
+            </View>
+            <View style={styles.col}>
+              <Text style={styles.fieldLabel}>Purchase Date *</Text>
+              <TouchableOpacity
+                style={[styles.dateSelector, errors?.billDate ? styles.inputError : null]}
+                onPress={() => {
+                  let current = parseDateTextToDate(billDate);
+                  const maxDate = new Date();
+                  if (!billDate || current > maxDate) {
+                    current = maxDate;
+                  }
+                  setTempDate(current);
+                  setShowPurchasePicker(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dateSelectorText, !billDate && styles.placeholderText]}>
+                  {billDate || 'DD/MM/YYYY'}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color="#888" />
+              </TouchableOpacity>
+              {errors?.billDate && <Text style={styles.errorText}>{errors.billDate}</Text>}
+            </View>
+
+            {/* Purchase Date Picker - Android */}
+            {Platform.OS === 'android' && showPurchasePicker && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowPurchasePicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    setBillDate(formatDateToDDMMYYYY(selectedDate));
+                  }
+                }}
+              />
+            )}
+
+            {/* Purchase Date Picker - iOS Modal */}
+            {Platform.OS === 'ios' && (
+              <Modal
+                visible={showPurchasePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowPurchasePicker(false)}
+              >
+                <View style={styles.iosModalOverlay}>
+                  <View style={styles.iosModalContainer}>
+                    <View style={styles.iosModalHeader}>
+                      <TouchableOpacity onPress={() => setShowPurchasePicker(false)}>
+                        <Text style={styles.iosModalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setBillDate(formatDateToDDMMYYYY(tempDate));
+                          setShowPurchasePicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      maximumDate={new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setTempDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+
+            {/* Warranty Date Picker - Android */}
+            {Platform.OS === 'android' && showWarrantyPicker && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                minimumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowWarrantyPicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    setWarrantyUntil(formatDateToDDMMYYYY(selectedDate));
+                  }
+                }}
+              />
+            )}
+
+            {/* Warranty Date Picker - iOS Modal */}
+            {Platform.OS === 'ios' && (
+              <Modal
+                visible={showWarrantyPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowWarrantyPicker(false)}
+              >
+                <View style={styles.iosModalOverlay}>
+                  <View style={styles.iosModalContainer}>
+                    <View style={styles.iosModalHeader}>
+                      <TouchableOpacity onPress={() => setShowWarrantyPicker(false)}>
+                        <Text style={styles.iosModalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setWarrantyUntil(formatDateToDDMMYYYY(tempDate));
+                          setShowWarrantyPicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosModalConfirmText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display="spinner"
+                      minimumDate={new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setTempDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+          </View>
+
+          {/* Products Section */}
+          <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Products</Text>
+          {errors?.products && (
+            <Text style={[styles.errorText, { marginBottom: 10, marginTop: -5 }]}>{errors.products}</Text>
+          )}
+
+          <ProductList
+            products={products}
+            onRemoveProduct={handleRemoveProduct}
+            productsTotal={productsTotal}
+          />
+
+          <ProductEntryForm
+            productName={productName}
+            setProductName={setProductName}
+            productQty={productQty}
+            setProductQty={setProductQty}
+            productUnitPrice={productUnitPrice}
+            setProductUnitPrice={setProductUnitPrice}
+            productDescription={productDescription}
+            setProductDescription={setProductDescription}
+            productSerialNumber={productSerialNumber}
+            setProductSerialNumber={setProductSerialNumber}
+            productWarrantyMonths={productWarrantyMonths}
+            setProductWarrantyMonths={setProductWarrantyMonths}
+            productTax={productTax}
+            setProductTax={setProductTax}
+            showProductExtras={showProductExtras}
+            setShowProductExtras={setShowProductExtras}
+            onAddProduct={handleAddProduct}
+            errors={errors}
+          />
+
+          {/* Additional Details (Optional) */}
+          <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Additional Details (Optional)</Text>
+
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <Text style={styles.fieldLabel}>Tax Amount (₹) (Auto)</Text>
+              <TextInput
+                style={[styles.fieldInput, { backgroundColor: '#F3F4F6', color: '#6B7280' }]}
+                placeholder="Total Tax"
+                placeholderTextColor="#BBB"
+                value={taxAmount}
+                editable={false}
+              />
+              {errors?.taxAmount && <Text style={styles.errorText}>{errors.taxAmount}</Text>}
+            </View>
+            <View style={styles.col}>
+              <Text style={styles.fieldLabel}>Discount (₹)</Text>
+              <TextInput
+                style={[
+                  styles.fieldInput,
+                  (discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount
+                    ? { borderColor: '#EF4444', borderWidth: 1 }
+                    : null
+                ]}
+                placeholder="e.g. 100"
+                placeholderTextColor="#BBB"
+                keyboardType="numeric"
+                value={discountAmount}
+                onChangeText={(text) => setDiscountAmount(sanitizePrice(text))}
+              />
+              {((discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount) && (
+                <Text style={styles.errorText}>
+                  {errors?.discountAmount || 'Must be less than total'}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* Warranty & Reminders */}
+          <View style={{ marginTop: 14 }}>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 8 }}
+              onPress={() => setHasWarranty(!hasWarranty)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={hasWarranty ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={hasWarranty ? '#4B65E4' : '#888'}
+              />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#333', marginLeft: 8 }}>
+                Add Warranty Expiration
+              </Text>
+            </TouchableOpacity>
+
+            {hasWarranty && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={styles.fieldLabel}>Warranty Expiration Date</Text>
+                <TouchableOpacity
+                  style={[styles.dateSelector, errors?.warrantyUntil ? styles.inputError : null]}
+                  onPress={() => {
+                    let current = parseDateTextToDate(warrantyUntil);
+                    if (!warrantyUntil) current = new Date();
+                    setTempDate(current);
+                    setShowWarrantyPicker(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dateSelectorText, !warrantyUntil && styles.placeholderText]}>
+                    {warrantyUntil || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color="#888" />
+                </TouchableOpacity>
+                {errors?.warrantyUntil && <Text style={styles.errorText}>{errors.warrantyUntil}</Text>}
+
+                <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Remind Me Before Expiry</Text>
+                <View style={styles.reminderContainer}>
+                  {[
+                    { id: '30_DAYS', label: '30 Days Before' },
+                    { id: '7_DAYS', label: '7 Days Before' },
+                    { id: '1_DAY', label: '1 Day Before' },
+                    { id: '1_HOUR', label: '1 Hour Before' },
+                  ].map((item) => {
+                    const isSelected = selectedReminders.includes(item.id as any);
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[styles.reminderPill, isSelected && styles.reminderPillSelected]}
+                        onPress={() => handleToggleReminder(item.id as any)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={isSelected ? 'checkmark-circle' : 'notifications-outline'}
+                          size={16}
+                          color={isSelected ? '#4B65E4' : '#666'}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text style={[styles.reminderPillText, isSelected && styles.reminderPillTextSelected]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </View>
+
+          {/* Payment Method Selector */}
+          <Text style={styles.fieldLabel}>Payment Method</Text>
+          <PaymentMethodSelector
+            selectedMethod={paymentMethod}
+            onSelectMethod={setPaymentMethod}
+          />
+
+          <Text style={styles.fieldLabel}>Notes</Text>
+          <TextInput
+            style={[styles.fieldInput, styles.fieldInputMulti]}
+            placeholder="Any additional details, descriptions or items..."
+            placeholderTextColor="#BBB"
+            multiline
+            numberOfLines={3}
+            value={billNotes}
+            onChangeText={setBillNotes}
+          />
+
+          <AttachmentSelector
+            selectedFile={selectedFile}
+            onSelectAttachment={handleSelectAttachment}
+            onClearAttachment={() => setSelectedFile(null)}
+          />
+
+          <TouchableOpacity
+            style={[styles.submitBtn, createBillMutation.isPending && styles.submitBtnDisabled]}
             onPress={handleSaveBill}
+            activeOpacity={0.85}
             disabled={createBillMutation.isPending}
           >
             {createBillMutation.isPending ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
-              <Text style={styles.saveBtnText}>Save and Categorize Bill</Text>
+              <Text style={styles.submitBtnText}>Save & Categorize Bill</Text>
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-            <Text style={styles.cancelBtnText}>Discard Bill</Text>
-          </TouchableOpacity>
-        </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      {/* Category Selector Modal */}
+      <CategorySelectorModal
+        visible={showCategoryModal}
+        onClose={() => setShowCategoryModal(false)}
+        selectedCategoryId={billCategory}
+        onSelectCategory={setBillCategory}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F6FA' },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F6FA',
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
     paddingVertical: 14,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#EBEBEB',
+    borderBottomColor: '#F0F0F0',
   },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A1A' },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16 },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F6FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4B65E4',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 10,
+  },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 14 },
+  fieldInput: {
+    height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
+    borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
+    color: '#1A1A1A', backgroundColor: '#FAFAFA',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  fieldInputMulti: { height: 90, paddingTop: 14, textAlignVertical: 'top' },
 
-  actionBlock: { gap: 12, marginTop: 12 },
-  saveBtn: {
-    backgroundColor: '#4B65E4',
-    borderRadius: 12,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#4B65E4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
   },
-  saveBtnDisabled: { backgroundColor: '#A5B4FC' },
-  saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  cancelBtn: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#FF4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
+  col: {
+    flex: 1,
   },
-  cancelBtnText: { color: '#FF4444', fontSize: 14, fontWeight: '700' },
+
+  submitBtn: {
+    marginTop: 28, backgroundColor: '#4B65E4', borderRadius: 14,
+    height: 54, justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#4B65E4', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  submitBtnText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+
+  dateSelector: {
+    height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
+    borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
+    backgroundColor: '#FAFAFA', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  dateSelectorText: { fontSize: 15, color: '#1A1A1A' },
+  placeholderText: { color: '#BBB' },
+
+  iosModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  iosModalContainer: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 30,
+  },
+  iosModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  iosModalCancelText: {
+    color: '#E14B4B',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  iosModalConfirmText: {
+    color: '#4B65E4',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  reminderContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+  },
+  reminderPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reminderPillSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4B65E4',
+  },
+  reminderPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  reminderPillTextSelected: {
+    color: '#4B65E4',
+    fontWeight: '600',
+  },
+
+  scanErrorBanner: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  scanErrorText: {
+    color: '#92400E',
+    fontSize: 12.5,
+    flex: 1,
+    lineHeight: 17,
+  },
+  retryScanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+    gap: 4,
+  },
+  retryScanText: {
+    color: '#D97706',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

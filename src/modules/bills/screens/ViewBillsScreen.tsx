@@ -136,7 +136,11 @@ export default function ViewBillsScreen() {
   }, [filteredBills, isQueryActive, selectedFilter, serverStats]);
 
   const handleBack = () => {
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Dashboard');
+    }
   };
 
   const toggleSearch = () => {

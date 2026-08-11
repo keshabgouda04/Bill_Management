@@ -168,6 +168,7 @@ export default function DashboardScreen() {
           onScan={handleScanBill}
           onUpload={handleUploadBill}
           onManualEntry={() => navigation.navigate('ManualEntry')}
+          onViewBills={() => navigation.navigate('ViewBills')}
         />
         <StatsRow />
         <RecentBillsSection />

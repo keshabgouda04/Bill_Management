@@ -19,6 +19,7 @@ export interface CreateBillPayload {
   reminders?: Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>;
   purchase_location?: string;
   notes?: string;
+  ocr_document_id?: string;
   bill_items?: Array<{
     item_name: string;
     description?: string;

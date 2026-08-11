@@ -14,13 +14,16 @@ export const API_URL = {
   },
   BILLS: {
     LIST: '/api/v1/bills',
-    CREATE: '/api/v1/bills',
+    CREATE: '/api/v1/bills/manual',
     CREATE_MANUAL: '/api/v1/bills/manual',
     DETAIL: '/api/v1/bills',
     SEARCH: '/api/v1/bills/search',
   },
   ATTACHMENTS: {
     CREATE: '/api/v1/attachments',
+  },
+  OCR: {
+    SCAN: '/api/v1/ocr',
   },
   FAMILY: {
     GET: '/api/v1/family',
