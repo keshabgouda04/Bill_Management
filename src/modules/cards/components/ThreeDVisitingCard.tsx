@@ -8,6 +8,7 @@ interface ThreeDVisitingCardProps {
   onDelete?: (card: VisitingCardType) => void;
   onShowQR?: (card: VisitingCardType) => void;
   interactive?: boolean;
+  autoIntroPeek?: boolean;
 }
 
 export function ThreeDVisitingCard({
@@ -15,6 +16,7 @@ export function ThreeDVisitingCard({
   onEdit,
   onDelete,
   onShowQR,
+  autoIntroPeek,
 }: ThreeDVisitingCardProps) {
   return (
     <MasterVisitingCard
@@ -24,10 +26,12 @@ export function ThreeDVisitingCard({
       phone={card.mobile}
       email={card.email}
       website={card.website || undefined}
+      socialLinks={card.social_links}
       address={[card.street, card.city, card.state, card.country].filter(Boolean).join(', ') || undefined}
       profileImage={card.profile_photo_url || undefined}
       logo={card.company_logo_url || undefined}
       templateId={card.template_id || 1}
+      autoIntroPeek={autoIntroPeek}
       onEdit={() => onEdit?.(card)}
       onDelete={() => onDelete?.(card)}
       onShowQR={() => onShowQR?.(card)}

@@ -447,6 +447,13 @@ export default function BillReviewScreen() {
         fileType={fileType}
         progress={scanningProgress}
         statusText={scanningStatus}
+        extractedDetails={{
+          merchant: billName,
+          date: billDate,
+          total: billAmount,
+          category: CATEGORIES.find((c) => c.id === billCategory)?.name || 'General',
+        }}
+        onComplete={() => setIsScanning(false)}
       />
     );
   }

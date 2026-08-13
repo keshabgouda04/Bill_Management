@@ -5,15 +5,17 @@ interface LoginButtonProps {
   title: string;
   onPress: () => void;
   loading: boolean;
+  disabled?: boolean;
 }
 
-export default function LoginButton({ title, onPress, loading }: LoginButtonProps) {
+export default function LoginButton({ title, onPress, loading, disabled = false }: LoginButtonProps) {
+  const isDisabled = loading || disabled;
   return (
     <TouchableOpacity
-      style={[styles.continueButton, loading && styles.disabledButton]}
+      style={[styles.continueButton, isDisabled && styles.disabledButton]}
       onPress={onPress}
       activeOpacity={0.8}
-      disabled={loading}
+      disabled={isDisabled}
     >
       {loading ? (
         <ActivityIndicator color="#FFFFFF" size="small" />

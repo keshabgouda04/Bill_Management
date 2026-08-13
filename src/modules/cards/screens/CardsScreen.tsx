@@ -25,6 +25,7 @@ import { VisitingCard, CreateVisitingCardPayload } from '../types/cardTypes';
 import { ThreeDVisitingCard } from '../components/ThreeDVisitingCard';
 import { CardFormModal } from '../components/CardFormModal';
 import { QRCodeModal } from '../components/QRCodeModal';
+import { CardDivider } from '../components/CardDivider';
 
 export function CardsScreen() {
   const { data: cards = [], isLoading, isRefetching, refetch } = useGetVisitingCards();
@@ -157,16 +158,27 @@ export function CardsScreen() {
             </View>
           ) : (
             <View style={styles.cardsFeed}>
-              {cards.map((cardItem) => (
-                <View key={cardItem.id} style={styles.cardWrapper}>
-                  <ThreeDVisitingCard
-                    card={cardItem}
-                    onEdit={handleOpenEdit}
-                    onDelete={handleDeleteCard}
-                    onShowQR={handleShowQR}
-                    interactive={true}
-                  />
-                </View>
+              {cards.map((cardItem, index) => (
+                <React.Fragment key={cardItem.id}>
+                  <View style={styles.cardWrapper}>
+                    <ThreeDVisitingCard
+                      card={cardItem}
+                      autoIntroPeek={index === 0}
+                      onEdit={handleOpenEdit}
+                      onDelete={handleDeleteCard}
+                      onShowQR={handleShowQR}
+                      interactive={true}
+                    />
+                  </View>
+                  {index < cards.length - 1 && (
+                    <CardDivider
+                      index={index}
+                      categoryName={cards[index + 1].card_name}
+                      jobTitle={cards[index + 1].job_title}
+                      companyName={cards[index + 1].company_name}
+                    />
+                  )}
+                </React.Fragment>
               ))}
             </View>
           )}
@@ -317,7 +329,7 @@ const styles = StyleSheet.create({
   },
   cardsFeed: {
     alignItems: 'center',
-    gap: 20,
+    gap: 8,
   },
   cardWrapper: {
     width: '100%',

@@ -160,7 +160,12 @@ export default function FamilyVaultSection({
         <View style={styles.billsList}>
           {filteredBills.map((item) => {
             const billData: any = item.bills || {};
-            const isUploader = item.shared_by === currentUserId;
+            const isUploader = Boolean(
+              currentUserId &&
+              (item.shared_by === currentUserId ||
+               item.shared_by_user?.id === currentUserId ||
+               item.bills?.user_id === currentUserId)
+            );
             const canRemove = isOwner || isUploader;
             const canEditVisibility = isUploader;
             const isDeleting = Boolean(deletingIds[item.id]);

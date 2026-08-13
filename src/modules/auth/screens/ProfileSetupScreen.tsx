@@ -6,10 +6,11 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   Alert,
   ActivityIndicator,
-  Image
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,11 +80,12 @@ export default function ProfileSetupScreen({ navigation }: Props) {
       const asset = result.assets[0];
       const uri = asset.uri;
       const lowerUri = uri.toLowerCase();
-      const isAllowedFormat = lowerUri.endsWith('.jpg') || 
-                              lowerUri.endsWith('.jpeg') || 
-                              lowerUri.endsWith('.png') || 
-                              lowerUri.endsWith('.webp') || 
-                              lowerUri.endsWith('.heic');
+      const isAllowedFormat =
+        lowerUri.endsWith('.jpg') ||
+        lowerUri.endsWith('.jpeg') ||
+        lowerUri.endsWith('.png') ||
+        lowerUri.endsWith('.webp') ||
+        lowerUri.endsWith('.heic');
 
       if (!isAllowedFormat) {
         Alert.alert('Invalid File', 'Only JPEG, PNG, WEBP, and HEIC image formats are supported.');
@@ -116,7 +118,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
       uploadAvatarMutation.mutate(formData, {
         onSuccess: () => {
-          setAvatarError(false); // Reset error visibility state
+          setAvatarError(false);
           Alert.alert('Success', 'Profile avatar updated successfully!');
         },
         onError: (err: any) => {
@@ -135,6 +137,12 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   const [email, setEmail] = useState(profile?.email || '');
   const [gender, setGender] = useState(profile?.gender || '');
   const [showGenderSelect, setShowGenderSelect] = useState(false);
+  const [errors, setErrors] = useState<{
+    fullName?: string;
+    phoneNumber?: string;
+    email?: string;
+    gender?: string;
+  }>({});
 
   useEffect(() => {
     if (profile?.full_name) setFullName(profile.full_name);
@@ -147,45 +155,61 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
   const handleCompleteSetup = () => {
     const isGoogleAuth = profile?.provider === 'google';
+    const newErrors: {
+      fullName?: string;
+      phoneNumber?: string;
+      email?: string;
+      gender?: string;
+    } = {};
 
-    if (!fullName.trim() || !gender) {
-      Alert.alert('Required Fields', 'Please enter your full name and select a gender.');
-      return;
+    // Validate Full Name
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required.';
+    } else if (fullName.trim().length < 2 || fullName.trim().length > 15) {
+      newErrors.fullName = 'Full name must be between 2 and 15 characters.';
+    } else {
+      const nameRegex = /^[a-zA-Z]{2,15}(?:\s+[a-zA-Z]+)*$/;
+      if (!nameRegex.test(fullName.trim())) {
+        newErrors.fullName = 'Full name must contain only letters and spaces.';
+      }
     }
 
-    // Validate Full Name: at least 2 characters and only letters/spaces
-    const nameRegex = /^[a-zA-Z\s]{2,50}$/;
-    if (!nameRegex.test(fullName.trim())) {
-      Alert.alert('Invalid Name', 'Full name must be at least 2 characters and contain only letters.');
-      return;
-    }
-
-    if (isGoogleAuth && !phoneNumber.trim()) {
-      Alert.alert('Required Fields', 'Please enter your phone number.');
-      return;
-    }
-
+    // Validate Phone Number (for Google Auth)
     if (isGoogleAuth) {
       const rawNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const indianPhoneRegex = /^[6-9]\d{9}$/;
-      if (!indianPhoneRegex.test(rawNumber)) {
-        Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit Indian phone number.');
-        return;
+      if (!rawNumber.trim()) {
+        newErrors.phoneNumber = 'Phone number is required.';
+      } else {
+        const indianPhoneRegex = /^[6-9]\d{9}$/;
+        if (!indianPhoneRegex.test(rawNumber)) {
+          newErrors.phoneNumber = 'Enter a valid 10-digit phone number starting with 6-9.';
+        }
       }
     }
 
-    if (!isGoogleAuth && !email.trim()) {
-      Alert.alert('Required Fields', 'Please enter your email address.');
+    // Validate Email (for Phone Auth)
+    if (!isGoogleAuth) {
+      if (!email.trim()) {
+        newErrors.email = 'Email address is required.';
+      } else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          newErrors.email = 'Enter a valid email address.';
+        }
+      }
+    }
+
+    // Validate Gender
+    if (!gender) {
+      newErrors.gender = 'Please select a gender.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    if (!isGoogleAuth) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email.trim())) {
-        Alert.alert('Invalid Email', 'Please enter a valid email address.');
-        return;
-      }
-    }
+    setErrors({});
 
     const payload: any = { full_name: fullName.trim(), gender: gender };
     if (isGoogleAuth) {
@@ -194,20 +218,17 @@ export default function ProfileSetupScreen({ navigation }: Props) {
       payload.email = email.trim();
     }
 
-    mutation.mutate(
-      payload,
-      {
-        onSuccess: () => {
-          setShowSplash(true);
-          setTimeout(() => {
-            navigation.replace('Dashboard');
-          }, 4000);
-        },
-        onError: (error: any) => {
-          Alert.alert('Update Failed', error.message || 'Could not update profile. Please try again.');
-        }
-      }
-    );
+    mutation.mutate(payload, {
+      onSuccess: () => {
+        setShowSplash(true);
+        setTimeout(() => {
+          navigation.replace('Dashboard');
+        }, 4000);
+      },
+      onError: (error: any) => {
+        Alert.alert('Update Failed', error.message || 'Could not update profile. Please try again.');
+      },
+    });
   };
 
   const handleBackToLogin = async () => {
@@ -221,15 +242,18 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-
-      {/* Background Pattern / Color */}
       <View style={styles.background} />
 
       <KeyboardAvoidingView
-        style={styles.container}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Ionicons name="shield-checkmark" size={24} color="#0052CC" />
@@ -262,10 +286,9 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                   onError={() => setAvatarError(true)}
                 />
               ) : (
-                <Ionicons name="person-outline" size={32} color="#666" />
+                <Ionicons name="person-outline" size={32} color="#0052CC" />
               )}
             </View>
-            
             {uploadAvatarMutation.isPending ? (
               <View style={styles.avatarUploadLoader}>
                 <ActivityIndicator size="small" color="#FFF" />
@@ -280,37 +303,51 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           {/* Full Name Input */}
           <View style={[styles.inputWrapper, { zIndex: 2 }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.fullName && styles.inputError]}
               placeholder="Full Name"
               placeholderTextColor="#999"
+              maxLength={15}
               value={fullName}
-              onChangeText={setFullName}
+              onChangeText={(text) => {
+                setFullName(text.replace(/[^a-zA-Z\s]/g, ''));
+                if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+              }}
             />
+            {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
           </View>
 
           {/* Email / Phone Number Input */}
           {profile?.provider === 'google' ? (
             <View style={[styles.inputWrapper, { zIndex: 1 }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.phoneNumber && styles.inputError]}
                 placeholder="Phone Number"
                 placeholderTextColor="#999"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
                 keyboardType="phone-pad"
+                maxLength={10}
+                value={phoneNumber}
+                onChangeText={(text) => {
+                  setPhoneNumber(text.replace(/[^0-9]/g, ''));
+                  if (errors.phoneNumber) setErrors((prev) => ({ ...prev, phoneNumber: undefined }));
+                }}
               />
+              {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
             </View>
           ) : (
             <View style={[styles.inputWrapper, { zIndex: 1 }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.email && styles.inputError]}
                 placeholder="Email Address"
                 placeholderTextColor="#999"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
+              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
             </View>
           )}
 
@@ -318,19 +355,24 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <View style={[styles.inputWrapper, { zIndex: 10 }]}>
             <Text style={styles.inputLabel}>Gender</Text>
             <TouchableOpacity
-              style={styles.selectContainer}
+              style={[styles.selectContainer, errors.gender && styles.inputError]}
               onPress={() => setShowGenderSelect(!showGenderSelect)}
               activeOpacity={0.8}
             >
               <Text style={[styles.selectText, !gender && { color: '#999' }]}>
-                {gender === 'male' ? 'Male' :
-                  gender === 'female' ? 'Female' :
-                    gender === 'other' ? 'Other' :
-                      gender === 'prefer_not_to_say' ? 'Prefer not to say' :
-                        'Select Gender'}
+                {gender === 'male'
+                  ? 'Male'
+                  : gender === 'female'
+                    ? 'Female'
+                    : gender === 'other'
+                      ? 'Other'
+                      : gender === 'prefer_not_to_say'
+                        ? 'Prefer not to say'
+                        : 'Select Gender'}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
+            {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
 
             {showGenderSelect && (
               <View style={styles.dropdown}>
@@ -338,7 +380,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                   { label: 'Male', value: 'male' },
                   { label: 'Female', value: 'female' },
                   { label: 'Other', value: 'other' },
-                  { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+                  { label: 'Prefer not to say', value: 'prefer_not_to_say' },
                 ].map((option) => (
                   <TouchableOpacity
                     key={option.value}
@@ -346,12 +388,15 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                     onPress={() => {
                       setGender(option.value);
                       setShowGenderSelect(false);
+                      if (errors.gender) setErrors((prev) => ({ ...prev, gender: undefined }));
                     }}
                   >
-                    <Text style={[
-                      styles.dropdownOptionText,
-                      gender === option.value && styles.dropdownItemSelected
-                    ]}>
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        gender === option.value && styles.dropdownItemSelected,
+                      ]}
+                    >
                       {option.label}
                     </Text>
                   </TouchableOpacity>
@@ -370,19 +415,16 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             {mutation.isPending ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <>
+              <View style={styles.buttonContent}>
                 <Text style={styles.buttonText}>Complete Setup</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF" />
-              </>
+                <Ionicons name="arrow-forward" size={18} color="#FFF" />
+              </View>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Back to Login */}
-        <TouchableOpacity
-          style={styles.backToLoginButton}
-          onPress={handleBackToLogin}
-        >
+        <TouchableOpacity style={styles.backToLoginButton} onPress={handleBackToLogin}>
           <Ionicons name="arrow-back" size={16} color="#0052CC" />
           <Text style={styles.backToLoginText}>Back to Log in</Text>
         </TouchableOpacity>
@@ -391,7 +433,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
         <Text style={styles.footerText}>
           © {new Date().getFullYear()} Wallely Security. All financial data is{'\n'}encrypted.
         </Text>
-
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -400,7 +442,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F5F7FA', // Match the light blue-ish grey from the image
+    backgroundColor: '#F5F7FA',
   },
   background: {
     position: 'absolute',
@@ -409,13 +451,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#F5F7FA',
-    // In a real app we could add the dotted pattern here
   },
-  container: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 40,
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -546,7 +587,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    top: 76, // below the input + label height
+    top: 76,
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
@@ -573,14 +614,19 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   button: {
-    flexDirection: 'row',
     width: '100%',
-    height: 48,
+    height: 52,
     backgroundColor: '#0052CC',
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -589,7 +635,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    marginRight: 8,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   backToLoginButton: {
     marginTop: 24,
@@ -609,7 +656,19 @@ const styles = StyleSheet.create({
     marginTop: 32,
     textAlign: 'center',
     fontSize: 12,
-    color: '#888',
-    lineHeight: 18,
-  }
+    color: '#808080',
+    zIndex: 1,
+    elevation: 1,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+    fontWeight: '500',
+  },
 });

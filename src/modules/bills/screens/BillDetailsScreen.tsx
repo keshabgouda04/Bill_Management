@@ -28,6 +28,7 @@ import { getAttachmentDownloadUrl } from '../../../services/attachmentService';
 import InfoRow from '../components/InfoRow';
 import EditBillModal from '../components/EditBillModal';
 import { useGetVaultBillDetail } from '../../../services/query/family/familyVault';
+import { useGetProfileDetails } from '../../../services/query/profile/profile';
 
 type Navigation = NativeStackNavigationProp<AppStackParamList, 'BillDetails'>;
 type BillDetailsRoute = RouteProp<AppStackParamList, 'BillDetails'>;
@@ -37,6 +38,9 @@ export default function BillDetailsScreen() {
   const route = useRoute<BillDetailsRoute>();
   const { width, height } = Dimensions.get('window');
   const { billId, sharedBillId } = route.params;
+
+  const { data: profileData } = useGetProfileDetails();
+  const currentUserId = profileData?.profile?.id || (profileData as any)?.id;
 
   const {
     data: personalData,
@@ -62,6 +66,16 @@ export default function BillDetailsScreen() {
     (vaultData as any)?.sharedBill?.bills ||
     (vaultData as any)?.data?.sharedBill?.bills ||
     (vaultData as any)?.data?.bills;
+
+  const billOwnerId =
+    bill?.user_id ||
+    (vaultData as any)?.shared_by ||
+    (vaultData as any)?.sharedBill?.shared_by ||
+    (vaultData as any)?.data?.sharedBill?.shared_by;
+
+  const isBillOwner =
+    Boolean(!sharedBillId && (!billOwnerId || (currentUserId && billOwnerId === currentUserId))) ||
+    Boolean(currentUserId && billOwnerId && currentUserId === billOwnerId);
 
   const isLoading = !bill && (isLoadingPersonal || (isErrorPersonal && isLoadingVault));
   const isError = !bill && !isLoadingPersonal && (!isErrorPersonal || (!isLoadingVault && !vaultData));
@@ -217,10 +231,12 @@ export default function BillDetailsScreen() {
           <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setIsEditModalVisible(true)} style={styles.headerEditBtn}>
-            <Ionicons name="pencil" size={14} color="#FFFFFF" />
-            <Text style={styles.headerEditText}>Edit</Text>
-          </TouchableOpacity>
+          {isBillOwner && (
+            <TouchableOpacity onPress={() => setIsEditModalVisible(true)} style={styles.headerEditBtn}>
+              <Ionicons name="pencil" size={14} color="#FFFFFF" />
+              <Text style={styles.headerEditText}>Edit</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Center: Price & Invoice */}
@@ -256,9 +272,11 @@ export default function BillDetailsScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>BILL INFORMATION</Text>
-            <TouchableOpacity onPress={() => setIsEditModalVisible(true)}>
-              <Text style={styles.editDetailsText}>Edit Details</Text>
-            </TouchableOpacity>
+            {isBillOwner && (
+              <TouchableOpacity onPress={() => setIsEditModalVisible(true)}>
+                <Text style={styles.editDetailsText}>Edit Details</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <InfoRow label="Purchase Date" value={formatDate(bill.purchase_date)} />
@@ -460,10 +478,12 @@ export default function BillDetailsScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity style={styles.dangerDeleteBtn} onPress={handleDeleteBill}>
-          <Ionicons name="trash-outline" size={18} color="#EF4444" />
-          <Text style={styles.dangerDeleteText}>Delete Entire Bill</Text>
-        </TouchableOpacity>
+        {isBillOwner && (
+          <TouchableOpacity style={styles.dangerDeleteBtn} onPress={handleDeleteBill}>
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            <Text style={styles.dangerDeleteText}>Delete Entire Bill</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       <EditBillModal
