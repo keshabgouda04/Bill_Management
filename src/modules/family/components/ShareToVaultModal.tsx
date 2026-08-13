@@ -15,6 +15,7 @@ import { useGetBills } from '../../../services/query/bills/bills';
 import { useGetMembers } from '../../../services/query/family/family';
 import { useGetVaultBills } from '../../../services/query/family/familyVault';
 import { useShareBillToVault } from '../../../services/mutation/family/familyVaultMutation';
+import { useGetProfileDetails } from '../../../services/query/profile/profile';
 
 interface ShareToVaultModalProps {
   visible: boolean;
@@ -29,7 +30,10 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
   const { data: personalBills = [], isLoading: isLoadingBills } = useGetBills();
   const { data: membersData } = useGetMembers();
   const { data: vaultBills = [] } = useGetVaultBills();
+  const { data: profileData } = useGetProfileDetails();
   const shareMutation = useShareBillToVault();
+
+  const currentUserEmail = (profileData?.profile?.email || (profileData as any)?.email || '').toLowerCase().trim();
 
   // Safely parse personal bills array
   const rawBills =
@@ -44,9 +48,14 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
     ? membersData?.data?.members || membersData?.members
     : [];
 
-  const memberEmails = activeMembers
+  const memberEmails: string[] = activeMembers
     .map((m: any) => m.profiles?.email || m.email)
     .filter(Boolean);
+
+  // Exclude current user's email from UI selection list
+  const displayMemberEmails = memberEmails.filter(
+    (email: string) => !currentUserEmail || email.toLowerCase().trim() !== currentUserEmail
+  );
 
   // Set of bill IDs that are already shared in the family vault
   const sharedBillIds = new Set((vaultBills || []).map((vb: any) => vb.bill_id));
@@ -65,7 +74,7 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
       return;
     }
 
-    if (visibilityType === 'SELECTIVE' && selectedEmails.length === 0) {
+    if (visibilityType === 'SELECTIVE' && displayMemberEmails.length > 0 && selectedEmails.length === 0) {
       Alert.alert(
         'Select Recipients',
         'Please select at least one family member to share this bill with.'
@@ -73,11 +82,22 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
       return;
     }
 
+    // Auto-include current user's email behind the scenes if selective visibility is used
+    const finalSharedEmails =
+      visibilityType === 'SELECTIVE'
+        ? Array.from(
+            new Set([
+              ...selectedEmails,
+              ...(currentUserEmail ? [currentUserEmail] : []),
+            ])
+          )
+        : [];
+
     shareMutation.mutate(
       {
         billId: selectedBillId,
         visibilityType,
-        sharedWithEmails: visibilityType === 'SELECTIVE' ? selectedEmails : [],
+        sharedWithEmails: finalSharedEmails,
       },
       {
         onSuccess: () => {
@@ -184,10 +204,10 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
           {visibilityType === 'SELECTIVE' && (
             <View style={styles.recipientsContainer}>
               <Text style={styles.sectionTitle}>Select Recipients</Text>
-              {memberEmails.length === 0 ? (
-                <Text style={styles.emptyText}>No active family members found.</Text>
+              {displayMemberEmails.length === 0 ? (
+                <Text style={styles.emptyText}>No other active family members found.</Text>
               ) : (
-                memberEmails.map((email: string) => {
+                displayMemberEmails.map((email: string) => {
                   const isChecked = selectedEmails.includes(email);
                   return (
                     <TouchableOpacity

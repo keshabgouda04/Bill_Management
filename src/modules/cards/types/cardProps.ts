@@ -1,3 +1,5 @@
+import { SocialLinks } from './cardTypes';
+
 export interface VisitingCardProps {
   name: string;
   designation: string;
@@ -10,6 +12,8 @@ export interface VisitingCardProps {
   logo?: string;
   backgroundColor?: string;
   templateId?: number;
+  socialLinks?: SocialLinks;
+  autoIntroPeek?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
 }

@@ -6,12 +6,17 @@ import {
   Dimensions,
   TouchableOpacity,
   Animated,
+  Easing,
   PanResponder,
   TouchableWithoutFeedback,
+  Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { VisitingCardProps } from '../types/cardProps';
 import { CardFront } from './CardFront';
+import { CardBack } from './CardBack';
 import { ActionMenu } from './ActionMenu';
 
 const { width } = Dimensions.get('window');
@@ -20,40 +25,148 @@ interface Props extends VisitingCardProps {
   onShowQR?: () => void;
 }
 
+type CardMode = 'front' | 'menu' | 'back';
+
 export const VisitingCard: React.FC<Props> = (props) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [cardMode, setCardMode] = useState<CardMode>('front');
+  const [isFlipped, setIsFlipped] = useState(false);
 
-  // Mutable ref to avoid stale closure
-  const isExpandedRef = useRef(false);
+  // Mutable ref to track mode in gestures
+  const modeRef = useRef<CardMode>('front');
   useEffect(() => {
-    isExpandedRef.current = isExpanded;
-  }, [isExpanded]);
+    modeRef.current = cardMode;
+  }, [cardMode]);
 
-  // Animated progress value (0 = closed/centered, 1 = opened/swiped left)
-  const progress = useRef(new Animated.Value(0)).current;
+  // Animated values:
+  // sideAnim: 0 = centered, 1 = swiped left for side menu
+  // flipAnim: 0 = front face (0deg), 1 = back face (180deg), 2 = back to front (360deg)
+  const sideAnim = useRef(new Animated.Value(0)).current;
+  const flipAnim = useRef(new Animated.Value(0)).current;
 
-  const animateToState = (toExpanded: boolean) => {
-    setIsExpanded(toExpanded);
-    isExpandedRef.current = toExpanded;
-    Animated.spring(progress, {
-      toValue: toExpanded ? 1 : 0,
-      friction: 7,
-      tension: 25,
-      useNativeDriver: false,
-    }).start();
-  };
+  // One-time intro slide to menu mode on initial load (first card only)
+  const hasPeekedRef = useRef(false);
+  useEffect(() => {
+    if (props.autoIntroPeek && !hasPeekedRef.current) {
+      hasPeekedRef.current = true;
+      const timer = setTimeout(() => {
+        if (modeRef.current === 'front') {
+          animateToMode('menu');
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [props.autoIntroPeek]);
 
-  const toggleOpen = () => {
-    animateToState(!isExpandedRef.current);
-  };
+  // Track flip value to toggle front/back display mid-rotation
+  useEffect(() => {
+    const listenerId = flipAnim.addListener(({ value }) => {
+      const normalized = Math.abs(value % 2);
+      if (normalized >= 0.5 && normalized < 1.5) {
+        setIsFlipped(true);
+      } else {
+        setIsFlipped(false);
+      }
+    });
+    return () => {
+      flipAnim.removeListener(listenerId);
+    };
+  }, []);
 
-  const closeMenu = () => {
-    if (isExpandedRef.current) {
-      animateToState(false);
+  const animateToMode = (targetMode: CardMode) => {
+    setCardMode(targetMode);
+    modeRef.current = targetMode;
+
+    if (targetMode === 'front') {
+      // Return to resting front face
+      Animated.parallel([
+        Animated.spring(sideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 25,
+          useNativeDriver: false,
+        }),
+        Animated.timing(flipAnim, {
+          // @ts-ignore
+          toValue: (flipAnim._value || 0) > 0.5 ? 2 : 0,
+          duration: 400,
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        // Reset flipAnim to 0 after completing 360deg rotation
+        // @ts-ignore
+        if ((flipAnim._value || 0) >= 1.8) {
+          flipAnim.setValue(0);
+        }
+      });
+    } else if (targetMode === 'menu') {
+      // Slide left to reveal side action menu
+      Animated.parallel([
+        Animated.spring(sideAnim, {
+          toValue: 1,
+          friction: 7,
+          tension: 25,
+          useNativeDriver: false,
+        }),
+        Animated.spring(flipAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 25,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    } else if (targetMode === 'back') {
+      // Glide to center & flip 180° to back face
+      Animated.parallel([
+        Animated.spring(sideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 25,
+          useNativeDriver: false,
+        }),
+        Animated.spring(flipAnim, {
+          toValue: 1,
+          friction: 7,
+          tension: 20,
+          useNativeDriver: false,
+        }),
+      ]).start();
     }
   };
 
-  // Full Interactive Swipe-Left & Drag Gesture Handler
+  const handleCardPress = () => {
+    if (modeRef.current === 'front') {
+      animateToMode('menu');
+    } else if (modeRef.current === 'menu') {
+      animateToMode('back');
+    } else {
+      animateToMode('front');
+    }
+  };
+
+  const closeMenu = () => {
+    if (modeRef.current !== 'front') {
+      animateToMode('front');
+    }
+  };
+
+  const handleQuickCall = (e: any) => {
+    e.stopPropagation();
+    if (!props.phone) return Alert.alert('Notice', 'No phone number provided');
+    Linking.openURL(`tel:${props.phone}`).catch(() => Alert.alert('Error', 'Cannot open dialer'));
+  };
+
+  const handleQuickEmail = (e: any) => {
+    e.stopPropagation();
+    if (!props.email) return Alert.alert('Notice', 'No email address provided');
+    Linking.openURL(`mailto:${props.email}`).catch(() => Alert.alert('Error', 'Cannot open mail client'));
+  };
+
+  const handleQuickQR = (e: any) => {
+    e.stopPropagation();
+    if (props.onShowQR) props.onShowQR();
+  };
+
+  // PanResponder Gesture Handler for Swipe & Tap
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -61,55 +174,80 @@ export const VisitingCard: React.FC<Props> = (props) => {
         return Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
       },
       onPanResponderGrant: () => {
-        progress.stopAnimation();
+        sideAnim.stopAnimation();
+        flipAnim.stopAnimation();
       },
       onPanResponderMove: (_, gestureState) => {
-        const baseValue = isExpandedRef.current ? 1 : 0;
+        if (modeRef.current === 'back') return;
+
+        const baseValue = modeRef.current === 'menu' ? 1 : 0;
         const delta = -gestureState.dx / (width * 0.42);
         let newProgress = baseValue + delta;
         if (newProgress < 0) newProgress = 0;
         if (newProgress > 1) newProgress = 1;
-        progress.setValue(newProgress);
+        sideAnim.setValue(newProgress);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) < 6 && Math.abs(gestureState.dy) < 6) {
-          animateToState(!isExpandedRef.current);
+        // Tap gesture detection
+        if (Math.abs(gestureState.dx) < 8 && Math.abs(gestureState.dy) < 8) {
+          handleCardPress();
+          return;
+        }
+
+        if (modeRef.current === 'back') {
+          animateToMode('front');
           return;
         }
 
         if (gestureState.dx < -30 || gestureState.vx < -0.3) {
-          animateToState(true);
+          animateToMode('menu');
         } else if (gestureState.dx > 30 || gestureState.vx > 0.3) {
-          animateToState(false);
+          animateToMode('front');
         } else {
           // @ts-ignore
-          const currentVal = progress._value || 0;
-          animateToState(currentVal > 0.4);
+          const currentVal = sideAnim._value || 0;
+          animateToMode(currentVal > 0.4 ? 'menu' : 'front');
         }
       },
       onPanResponderTerminate: () => {
-        animateToState(isExpandedRef.current);
+        animateToMode(modeRef.current);
       },
     })
   ).current;
 
-  // 3D Perspective Transformations
-  const rotateY = progress.interpolate({
+  // 3D Perspective Transformations: Vertical Flip (rotateX) & Vertical Arc (translateY from Y to -Y)
+  const rotateY = sideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '-18deg'],
   });
 
-  const scale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.80],
+  const rotateX = flipAnim.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: ['0deg', '-180deg', '-360deg'],
   });
 
-  const translateX = progress.interpolate({
+  const translateY = flipAnim.interpolate({
+    inputRange: [0, 0.5, 1, 1.5, 2],
+    outputRange: [0, -35, 0, 35, 0],
+  });
+
+  const scale = Animated.add(
+    sideAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 0.80],
+    }),
+    flipAnim.interpolate({
+      inputRange: [0, 0.5, 1, 1.5, 2],
+      outputRange: [0, 0.08, 0, 0.08, 0],
+    })
+  );
+
+  const translateX = sideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -width * 0.42],
   });
 
-  const pillOpacity = progress.interpolate({
+  const pillOpacity = sideAnim.interpolate({
     inputRange: [0, 0.3],
     outputRange: [1, 0],
   });
@@ -117,7 +255,7 @@ export const VisitingCard: React.FC<Props> = (props) => {
   return (
     <View style={styles.container}>
       {/* Backdrop to close menu when tapping outside */}
-      {isExpanded && (
+      {cardMode !== 'front' && (
         <TouchableWithoutFeedback onPress={closeMenu}>
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
@@ -125,7 +263,7 @@ export const VisitingCard: React.FC<Props> = (props) => {
 
       {/* Main Interactive Stage */}
       <View style={styles.stage}>
-        {/* LEFT SIDE: 3D Card */}
+        {/* 3D Card Stage */}
         <Animated.View
           {...panResponder.panHandlers}
           style={[
@@ -133,35 +271,33 @@ export const VisitingCard: React.FC<Props> = (props) => {
             {
               transform: [
                 { translateX },
+                { translateY },
                 { perspective: 1000 },
                 { rotateY },
+                { rotateX },
                 { scale },
               ],
             },
           ]}
         >
-          <CardFront data={props} isExpanded={isExpanded} />
+          {isFlipped ? (
+            <View style={styles.backWrapper}>
+              <CardBack data={props} onShowQR={props.onShowQR} />
+            </View>
+          ) : (
+            <CardFront data={props} isExpanded={cardMode === 'menu'} />
+          )}
         </Animated.View>
 
-        {/* RIGHT SIDE: 2-Column (6 Items) Action Menu */}
+        {/* RIGHT SIDE: 2-Column Action Menu */}
         <ActionMenu
           data={props}
-          visible={isExpanded}
+          visible={cardMode === 'menu'}
           onClose={closeMenu}
           onShowQR={props.onShowQR}
+          onFlipCard={() => animateToMode('back')}
         />
       </View>
-
-      {/* CRED-style Action Pill Button */}
-      <Animated.View style={[styles.actionPillWrapper, { opacity: pillOpacity }]} pointerEvents={isExpanded ? 'none' : 'auto'}>
-        <TouchableOpacity style={styles.actionPill} activeOpacity={0.8} onPress={toggleOpen}>
-          <View style={styles.pillIconCircle}>
-            <Ionicons name="sparkles-outline" size={13} color="#4B65E4" />
-          </View>
-          <Text style={styles.pillText}>Quick Actions</Text>
-          <Ionicons name="chevron-forward" size={12} color="#64748B" />
-        </TouchableOpacity>
-      </Animated.View>
     </View>
   );
 };
@@ -169,7 +305,7 @@ export const VisitingCard: React.FC<Props> = (props) => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingBottom: 40,
+    paddingBottom: 0,
     alignItems: 'center',
     position: 'relative',
   },
@@ -195,35 +331,83 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 3,
   },
-  actionPillWrapper: {
+  backWrapper: {
+    transform: [{ scaleY: -1 }],
+  },
+  actionDockWrapper: {
     position: 'absolute',
-    bottom: 2,
+    bottom: 0,
     alignItems: 'center',
     zIndex: 5,
+    width: width * 0.26,
   },
-  actionPill: {
+  actionDock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+    gap: 8,
+  },
+  dockTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingLeft: 2,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  dockTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#475569',
+    letterSpacing: 0.6,
+  },
+  dockDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#E2E8F0',
+  },
+  dockIconsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  pillIconCircle: {
+  dockIconBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pillText: {
-    fontSize: 12,
+  dockTriggerBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  dockTriggerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  dockTriggerText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
 });

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGetMembers } from '../../../services/query/family/family';
 import { SharedVaultBill } from '../../../services/query/family/familyVault';
 import { useUpdateVaultBillVisibility } from '../../../services/mutation/family/familyVaultMutation';
+import { useGetProfileDetails } from '../../../services/query/profile/profile';
 
 interface EditVisibilityModalProps {
   visible: boolean;
@@ -29,22 +30,33 @@ export default function EditVisibilityModal({
   const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
 
   const { data: membersData } = useGetMembers();
+  const { data: profileData } = useGetProfileDetails();
   const updateMutation = useUpdateVaultBillVisibility();
+
+  const currentUserEmail = (profileData?.profile?.email || (profileData as any)?.email || '').toLowerCase().trim();
 
   const activeMembers = Array.isArray(membersData?.data?.members || membersData?.members)
     ? membersData?.data?.members || membersData?.members
     : [];
 
-  const memberEmails = activeMembers
+  const memberEmails: string[] = activeMembers
     .map((m: any) => m.profiles?.email || m.email)
     .filter(Boolean);
+
+  // Exclude current user's email from UI selection list
+  const displayMemberEmails = memberEmails.filter(
+    (email: string) => !currentUserEmail || email.toLowerCase().trim() !== currentUserEmail
+  );
 
   useEffect(() => {
     if (sharedBill) {
       setVisibilityType(sharedBill.visibility_type || 'ALL');
-      setSelectedEmails(sharedBill.shared_with_emails || []);
+      const initialEmails = (sharedBill.shared_with_emails || []).filter(
+        (e: string) => !currentUserEmail || e.toLowerCase().trim() !== currentUserEmail
+      );
+      setSelectedEmails(initialEmails);
     }
-  }, [sharedBill]);
+  }, [sharedBill, currentUserEmail]);
 
   const toggleEmail = (email: string) => {
     if (selectedEmails.includes(email)) {
@@ -57,7 +69,7 @@ export default function EditVisibilityModal({
   const handleSave = () => {
     if (!sharedBill) return;
 
-    if (visibilityType === 'SELECTIVE' && selectedEmails.length === 0) {
+    if (visibilityType === 'SELECTIVE' && displayMemberEmails.length > 0 && selectedEmails.length === 0) {
       Alert.alert(
         'Select Recipients',
         'Please select at least one family member to share this bill with.'
@@ -65,12 +77,23 @@ export default function EditVisibilityModal({
       return;
     }
 
+    // Auto-include current user's email behind the scenes if selective visibility is used
+    const finalSharedEmails =
+      visibilityType === 'SELECTIVE'
+        ? Array.from(
+            new Set([
+              ...selectedEmails,
+              ...(currentUserEmail ? [currentUserEmail] : []),
+            ])
+          )
+        : [];
+
     updateMutation.mutate(
       {
         sharedBillId: sharedBill.id,
         payload: {
           visibilityType,
-          sharedWithEmails: visibilityType === 'SELECTIVE' ? selectedEmails : [],
+          sharedWithEmails: finalSharedEmails,
         },
       },
       {
@@ -175,10 +198,10 @@ export default function EditVisibilityModal({
           {visibilityType === 'SELECTIVE' && (
             <View style={styles.recipientsContainer}>
               <Text style={styles.sectionTitle}>Select Recipients</Text>
-              {memberEmails.length === 0 ? (
-                <Text style={styles.emptyText}>No active members found.</Text>
+              {displayMemberEmails.length === 0 ? (
+                <Text style={styles.emptyText}>No other active members found.</Text>
               ) : (
-                memberEmails.map((email: string) => {
+                displayMemberEmails.map((email: string) => {
                   const isChecked = selectedEmails.includes(email);
                   return (
                     <TouchableOpacity

@@ -15,6 +15,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import {
   VisitingCard,
@@ -39,35 +40,35 @@ const TEMPLATES = [
     name: 'Cyber Onyx',
     subtitle: 'Futuristic Dark Obsidian & Cyan Glow',
     badge: '#38BDF8',
-    gradient: ['#0D1527', '#17243B'],
+    gradient: ['#0D1527', '#17243B'] as const,
   },
   {
     id: 2,
     name: 'Royal Gold',
     subtitle: 'Champagne Gold Foil & Velvet Glass',
     badge: '#F7D070',
-    gradient: ['#1E1629', '#2E1D38'],
+    gradient: ['#1E1629', '#2E1D38'] as const,
   },
   {
     id: 3,
     name: 'Sapphire Exec',
     subtitle: 'Royal Navy & Platinum Silver Accent',
     badge: '#38BDF8',
-    gradient: ['#0A192F', '#1E293B'],
+    gradient: ['#0A192F', '#1E293B'] as const,
   },
   {
     id: 4,
     name: 'Emerald Luxe',
     subtitle: 'Deep Emerald Green & Gold Frame',
     badge: '#34D399',
-    gradient: ['#042F2E', '#064E3B'],
+    gradient: ['#042F2E', '#064E3B'] as const,
   },
   {
     id: 5,
     name: 'Titanium Steel',
     subtitle: 'Brushed Titanium Steel & Chrome Monochrome',
     badge: '#9CA3AF',
-    gradient: ['#1F2937', '#374151'],
+    gradient: ['#1F2937', '#374151'] as const,
   },
 ];
 
@@ -253,15 +254,16 @@ export function CardFormModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Top Wizard Header */}
+        {/* Top Wizard Header Bar */}
         <View style={styles.headerBar}>
           {step === 2 && !editingCard ? (
-            <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
-              <Ionicons name="arrow-back" size={20} color="#4B65E4" />
-              <Text style={styles.backBtnText}>Templates</Text>
+            <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color="#4B65E4" />
+              <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color="#64748B" />
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
           )}
@@ -271,20 +273,16 @@ export function CardFormModal({
               {editingCard
                 ? 'Edit Visiting Card'
                 : step === 1
-                ? 'Step 1: Choose Template'
-                : 'Step 2: Enter Details'}
+                  ? 'Choose Template'
+                  : 'Card Details'}
             </Text>
             {!editingCard && (
-              <View style={styles.stepIndicatorRow}>
-                <View style={[styles.stepDot, step >= 1 && styles.stepDotActive]} />
-                <View style={styles.stepLine} />
-                <View style={[styles.stepDot, step >= 2 && styles.stepDotActive]} />
-              </View>
+              <Text style={styles.stepBadgeText}>Step {step} of 2</Text>
             )}
           </View>
 
           {step === 2 ? (
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit} disabled={isLoading}>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit} disabled={isLoading} activeOpacity={0.8}>
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
@@ -292,23 +290,52 @@ export function CardFormModal({
               )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.nextBtn} onPress={() => setStep(2)}>
+            <TouchableOpacity style={styles.nextBtn} onPress={() => setStep(2)} activeOpacity={0.8}>
               <Text style={styles.nextBtnText}>Next</Text>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
             </TouchableOpacity>
           )}
         </View>
 
+        {/* Top Slim Wizard Progress Line */}
+        {!editingCard && (
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, { width: step === 1 ? '50%' : '100%' }]} />
+          </View>
+        )}
+
         {/* STEP 1: Choose 3D Template */}
         {step === 1 ? (
           <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.sectionSubtitle}>
-              Select one of the 5 premium design templates for your card:
-            </Text>
+            {/* Top Banner Row */}
+            <View style={styles.topHeaderBanner}>
+              <View style={styles.bannerIconCircle}>
+                <Ionicons name="sparkles" size={20} color="#4B65E4" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headerBannerTitle}>Choose your perfect card style</Text>
+                <Text style={styles.headerBannerSubtitle}>Pick one of the 5 premium templates</Text>
+              </View>
+            </View>
 
             {/* Template Live Preview Hero */}
             <View style={styles.templatePreviewBox}>
               <ThreeDVisitingCard card={livePreviewCard} interactive={true} />
+            </View>
+
+            {/* Pagination Dots (1 active, 4 inactive) */}
+            <View style={styles.paginationDotsRow}>
+              {TEMPLATES.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  activeOpacity={0.7}
+                  onPress={() => setTemplateId(t.id)}
+                  style={[
+                    styles.paginationDot,
+                    templateId === t.id ? styles.paginationDotActive : styles.paginationDotInactive,
+                  ]}
+                />
+              ))}
             </View>
 
             {/* Template Selector List */}
@@ -322,31 +349,39 @@ export function CardFormModal({
                     style={[styles.templateCardItem, isSelected && styles.templateCardItemActive]}
                     onPress={() => setTemplateId(t.id)}
                   >
-                    <View style={styles.templateItemHeader}>
-                      <View style={styles.templateBadgeRow}>
-                        <View style={[styles.colorDot, { backgroundColor: t.badge }]} />
+                    {/* Left Vertical Color Bar */}
+                    <View style={[styles.templateColorBar, { backgroundColor: t.badge }]} />
+
+                    {/* Mini Card Thumbnail Preview Box */}
+                    <LinearGradient colors={t.gradient} style={styles.miniCardThumbnail}>
+                      <View style={styles.miniThumbnailLine1} />
+                      <View style={styles.miniThumbnailLine2} />
+                    </LinearGradient>
+
+                    {/* Template Information */}
+                    <View style={styles.templateInfoCol}>
+                      <View style={styles.templateTitleRow}>
                         <Text style={styles.templateName}>{t.name}</Text>
                         <View style={styles.idTag}>
                           <Text style={styles.idTagText}>ID {t.id}</Text>
                         </View>
                       </View>
-                      {isSelected ? (
-                        <Ionicons name="checkmark-circle" size={24} color="#4B65E4" />
-                      ) : (
-                        <View style={styles.radioOutline} />
-                      )}
+                      <Text style={styles.templateDesc}>{t.subtitle}</Text>
                     </View>
-                    <Text style={styles.templateDesc}>{t.subtitle}</Text>
+
+                    {/* Right Checkmark / Radio Indicator */}
+                    {isSelected ? (
+                      <View style={styles.selectedCircle}>
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                      </View>
+                    ) : (
+                      <View style={styles.radioOutline} />
+                    )}
                   </TouchableOpacity>
                 );
               })}
             </View>
-
-            <TouchableOpacity style={styles.continueStepBtn} onPress={() => setStep(2)}>
-              <Text style={styles.continueStepBtnText}>Continue with Template {templateId}</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={{ height: 40 }} />
+            <View style={{ height: 30 }} />
           </ScrollView>
         ) : (
           /* STEP 2: Fill Card Data */
@@ -583,71 +618,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 20,
-    paddingBottom: 14,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 16,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#F1F5F9',
   },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    minWidth: 70,
   },
   backBtnText: {
     fontSize: 14,
     color: '#4B65E4',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   cancelBtn: {
-    padding: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    minWidth: 70,
   },
   cancelBtnText: {
     fontSize: 14,
     color: '#64748B',
+    fontWeight: '600',
   },
   headerTitleContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
+    textAlign: 'center',
   },
-  stepIndicatorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+  stepBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0d0d0dff',
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#CBD5E1',
-  },
-  stepDotActive: {
-    backgroundColor: '#4B65E4',
-    width: 14,
-  },
-  stepLine: {
-    width: 12,
-    height: 2,
+  progressBarTrack: {
+    width: '100%',
+    height: 3,
     backgroundColor: '#E2E8F0',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#4B65E4',
+    borderRadius: 1.5,
   },
   nextBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: '#4B65E4',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 70,
   },
   nextBtnText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 14,
   },
   saveBtn: {
     backgroundColor: '#4B65E4',
@@ -672,9 +713,56 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     textAlign: 'center',
   },
+  topHeaderBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  bannerIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0F3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerBannerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  headerBannerSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 1,
+  },
   templatePreviewBox: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  paginationDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  paginationDot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  paginationDotActive: {
+    width: 14,
+    backgroundColor: '#4B65E4',
+  },
+  paginationDotInactive: {
+    width: 8,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    backgroundColor: 'transparent',
   },
   templateList: {
     gap: 12,
@@ -682,29 +770,58 @@ const styles = StyleSheet.create({
   },
   templateCardItem: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 2,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   templateCardItemActive: {
     borderColor: '#4B65E4',
-    backgroundColor: '#F0F3FF',
+    backgroundColor: '#F7F8FF',
   },
-  templateItemHeader: {
-    flexDirection: 'row',
+  templateColorBar: {
+    width: 3.5,
+    height: 48,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  miniCardThumbnail: {
+    width: 60,
+    height: 44,
+    borderRadius: 10,
+    padding: 6,
     justifyContent: 'space-between',
-    alignItems: 'center',
+    marginRight: 8,
   },
-  templateBadgeRow: {
+  miniThumbnailLine1: {
+    width: 24,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 1,
+  },
+  miniThumbnailLine2: {
+    width: 14,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'flex-end',
+  },
+  templateInfoCol: {
+    flex: 1,
+    marginRight: 8,
+  },
+  templateTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    gap: 6,
   },
   templateName: {
     fontSize: 15,
@@ -712,7 +829,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   idTag: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#EEF2FF',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -720,34 +837,28 @@ const styles = StyleSheet.create({
   idTagText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
-  },
-  radioOutline: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#CBD5E1',
+    color: '#4B65E4',
   },
   templateDesc: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 6,
+    marginTop: 2,
+    lineHeight: 16,
   },
-  continueStepBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  selectedCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#4B65E4',
-    paddingVertical: 14,
-    borderRadius: 16,
-    marginTop: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  continueStepBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 15,
+  radioOutline: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
   },
   changeTemplateBar: {
     flexDirection: 'row',

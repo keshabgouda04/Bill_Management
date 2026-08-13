@@ -18,9 +18,10 @@ interface ActionMenuProps {
   visible: boolean;
   onClose?: () => void;
   onShowQR?: () => void;
+  onFlipCard?: () => void;
 }
 
-export const ActionMenu: React.FC<ActionMenuProps> = ({ data, visible, onShowQR }) => {
+export const ActionMenu: React.FC<ActionMenuProps> = ({ data, visible, onShowQR, onFlipCard }) => {
   const [moreModalVisible, setMoreModalVisible] = useState(false);
 
   const itemAnims = useRef([
@@ -86,8 +87,12 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ data, visible, onShowQR 
     }
   };
 
-  const handleMoreActions = () => {
-    setMoreModalVisible(true);
+  const handleFlipCard = () => {
+    if (onFlipCard) {
+      onFlipCard();
+    } else {
+      setMoreModalVisible(true);
+    }
   };
 
   // Column 1 (Left - 3 items)
@@ -97,11 +102,11 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ data, visible, onShowQR 
     { index: 2, id: 'website', labelLine1: 'visit', labelLine2: 'website', iconType: 'ion', icon: 'globe-outline', action: handleWebsite },
   ];
 
-  // Column 2 (Right - 3 items with 6th item as "more actions")
+  // Column 2 (Right - 3 items with 6th item as "flip card")
   const col2 = [
     { index: 3, id: 'whatsapp', labelLine1: 'chat', labelLine2: 'whatsapp', iconType: 'fa5', icon: 'whatsapp', action: handleWhatsApp },
     { index: 4, id: 'share', labelLine1: 'share', labelLine2: 'card', iconType: 'ion', icon: 'share-outline', action: handleShare },
-    { index: 5, id: 'more', labelLine1: 'more', labelLine2: 'actions', iconType: 'mci', icon: 'dots-grid', action: handleMoreActions },
+    { index: 5, id: 'flip', labelLine1: 'flip', labelLine2: 'card', iconType: 'ion', icon: 'sync-outline', action: handleFlipCard },
   ];
 
   const renderItem = (item: typeof col1[0]) => {
