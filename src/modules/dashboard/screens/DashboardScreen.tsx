@@ -51,7 +51,8 @@ export default function DashboardScreen() {
     return 'Good Evening';
   };
 
-  const firstName = profile?.full_name?.split(' ')[0] || 'User';
+  const rawFirstName = profile?.full_name?.trim().split(' ')[0] || 'User';
+  const firstName = rawFirstName.length > 18 ? `${rawFirstName.slice(0, 15)}...` : rawFirstName;
 
   // ── Upload PDF (File Picker) ────────────────────────────────────────────────
   const handleUploadBill = async () => {
@@ -131,8 +132,10 @@ export default function DashboardScreen() {
           <View style={{ marginLeft: 12 }}>
             <Text style={styles.greetingText}>{getGreeting()},</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={styles.nameText}>{firstName}</Text>
-              <Ionicons name="checkmark-circle" size={16} color="#4B65E4" />
+              <Text style={styles.nameText} numberOfLines={1} ellipsizeMode="tail">
+                {firstName}
+              </Text>
+              {/* <Ionicons name="checkmark-circle" size={16} color="#4B65E4" /> */}
             </View>
           </View>
         </View>
@@ -158,7 +161,7 @@ export default function DashboardScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* ── Global Search Trigger ── */}
         <SearchBar
-          placeholder="Search invoice #, store, category..."
+          placeholder="Search bills or invoices..."
           onPress={() => navigation.navigate('Search')}
         />
 
@@ -213,7 +216,7 @@ const styles = StyleSheet.create({
   },
   profileText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
   greetingText: { fontSize: 13, color: '#999', fontWeight: '500' },
-  nameText: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  nameText: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', maxWidth: 160 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconButton: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#F5F6FA',

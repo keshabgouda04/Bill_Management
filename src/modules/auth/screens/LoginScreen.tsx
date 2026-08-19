@@ -21,6 +21,7 @@ import { AuthStackParamList } from '../../../navigation/AuthNavigator';
 import { sendOtp, loginWithGoogle } from '../api/authApi';
 import LoginButton from '../components/LoginButton';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GoogleLogo } from '../../../components/common/GoogleLogo';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -142,7 +143,7 @@ export default function LoginScreen({ navigation }: Props) {
               activeOpacity={0.8}
               disabled={loading}
             >
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
+              <GoogleLogo size={20} />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
           </ScrollView>

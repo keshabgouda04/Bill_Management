@@ -120,23 +120,25 @@ export default function ManualEntryScreen() {
             </View>
           )}
 
-          <Text style={styles.fieldLabel}>Bill Name / Merchant *</Text>
+          <Text style={styles.fieldLabel}>Store Name</Text>
           <TextInput
             style={[styles.fieldInput, errors?.billName ? styles.inputError : null]}
-            placeholder="e.g. Reliance Digital, Apple Store"
+            placeholder="Enter Store Name"
             placeholderTextColor="#BBB"
             value={billName}
             onChangeText={setBillName}
+            maxLength={100}
           />
           {errors?.billName && <Text style={styles.errorText}>{errors.billName}</Text>}
 
           <Text style={styles.fieldLabel}>Invoice / Bill Number *</Text>
           <TextInput
             style={[styles.fieldInput, errors?.invoiceNumber ? styles.inputError : null]}
-            placeholder="e.g. INV-1002"
+            placeholder="Enter Invoice / Bill Number"
             placeholderTextColor="#BBB"
             value={invoiceNumber}
             onChangeText={setInvoiceNumber}
+            maxLength={25}
           />
           {errors?.invoiceNumber && <Text style={styles.errorText}>{errors.invoiceNumber}</Text>}
 
@@ -362,6 +364,7 @@ export default function ManualEntryScreen() {
                 keyboardType="numeric"
                 value={discountAmount}
                 onChangeText={(text) => setDiscountAmount(sanitizePrice(text))}
+                maxLength={10}
               />
               {((discountAmount.trim() !== '' && parseFloat(discountAmount) >= productsTotal + (parseFloat(taxAmount) || 0)) || errors?.discountAmount) && (
                 <Text style={styles.errorText}>
@@ -449,16 +452,23 @@ export default function ManualEntryScreen() {
             onSelectMethod={setPaymentMethod}
           />
 
-          <Text style={styles.fieldLabel}>Notes</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.fieldLabel}>Notes</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: billNotes.length >= 500 ? '#EF4444' : '#888', marginTop: 14, marginBottom: 6 }}>
+              {billNotes.length}/500
+            </Text>
+          </View>
           <TextInput
-            style={[styles.fieldInput, styles.fieldInputMulti]}
+            style={[styles.fieldInput, styles.fieldInputMulti, errors?.billNotes ? styles.inputError : null]}
             placeholder="Any additional details, descriptions or items..."
             placeholderTextColor="#BBB"
             multiline
             numberOfLines={3}
             value={billNotes}
             onChangeText={setBillNotes}
+            maxLength={500}
           />
+          {errors?.billNotes && <Text style={styles.errorText}>{errors.billNotes}</Text>}
 
           <AttachmentSelector
             selectedFile={selectedFile}

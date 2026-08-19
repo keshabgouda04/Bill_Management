@@ -23,6 +23,7 @@ import { useUpdateProfileDetails } from '../../../services/mutation/profile/prof
 import { useUploadAvatar } from '../../../services/mutation/profile/uploadAvatar';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { validateName } from '../../../utils/validators';
 import SplashScreen from './SplashScreen';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'ProfileSetup'>;
@@ -163,15 +164,9 @@ export default function ProfileSetupScreen({ navigation }: Props) {
     } = {};
 
     // Validate Full Name
-    if (!fullName.trim()) {
-      newErrors.fullName = 'Full name is required.';
-    } else if (fullName.trim().length < 2 || fullName.trim().length > 15) {
-      newErrors.fullName = 'Full name must be between 2 and 15 characters.';
-    } else {
-      const nameRegex = /^[a-zA-Z]{2,15}(?:\s+[a-zA-Z]+)*$/;
-      if (!nameRegex.test(fullName.trim())) {
-        newErrors.fullName = 'Full name must contain only letters and spaces.';
-      }
+    const nameErr = validateName(fullName, 'Full name', 40);
+    if (nameErr) {
+      newErrors.fullName = nameErr;
     }
 
     // Validate Phone Number (for Google Auth)
@@ -306,11 +301,12 @@ export default function ProfileSetupScreen({ navigation }: Props) {
               style={[styles.input, errors.fullName && styles.inputError]}
               placeholder="Full Name"
               placeholderTextColor="#999"
-              maxLength={15}
+              maxLength={40}
               value={fullName}
               onChangeText={(text) => {
-                setFullName(text.replace(/[^a-zA-Z\s]/g, ''));
-                if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: undefined }));
+                setFullName(text);
+                const err = validateName(text, 'Full name', 40);
+                setErrors((prev) => ({ ...prev, fullName: err || undefined }));
               }}
             />
             {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}

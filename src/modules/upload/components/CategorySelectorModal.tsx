@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES } from '../constants/categories';
@@ -31,15 +32,24 @@ export const CategorySelectorModal = ({
       onRequestClose={onClose}
     >
       <View style={styles.iosModalOverlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.dismissOverlay} />
+        </TouchableWithoutFeedback>
+
         <View style={[styles.iosModalContainer, { maxHeight: '65%' }]}>
+          <View style={styles.grabHandle} />
+
           <View style={styles.iosModalHeader}>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.iosModalCancelText}>Cancel</Text>
-            </TouchableOpacity>
             <Text style={styles.modalTitle}>Select Category</Text>
-            <View style={{ width: 60 }} />
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={22} color="#1A1A1A" />
+            </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16 }}>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16 }}
+          >
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCategoryId === cat.id;
               return (
@@ -81,25 +91,46 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
+  dismissOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
   iosModalContainer: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    paddingTop: 8,
     paddingBottom: 30,
+  },
+  grabHandle: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E5E5EA',
+    alignSelf: 'center',
+    marginBottom: 8,
   },
   iosModalHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  iosModalCancelText: {
-    color: '#E14B4B',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F5F6FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   categorySelectItem: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useGetBillsInfinite } from '../../bills/api/billsApi';
 import { supabase } from '../../../helper/supabase';
+import { GoogleLogo, DIMENSIONS } from '../../../components/common';
 import { InfoRow, SectionCard, StatChip, EditProfileModal } from '../components';
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -317,11 +318,8 @@ export default function ProfileScreen() {
               </View>
             )}
           </TouchableOpacity>
+
           <Text style={styles.profileName}>{profile?.full_name || 'User'}</Text>
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={16} color="#4B65E4" />
-            <Text style={styles.verifiedText}>Verified Account</Text>
-          </View>
           <Text style={styles.memberSince}>
             Member since {formatDate(profile?.created_at) || '—'}
           </Text>
@@ -348,7 +346,7 @@ export default function ProfileScreen() {
           <InfoRow icon="transgender-outline" label="Gender" value={formatGender(profile?.gender)} />
           <InfoRow icon="earth-outline" label="Country" value={"India"} />
           <InfoRow icon="language-outline" label="Language" value={profile?.language} />
-          <InfoRow icon="time-outline" label="Timezone" value={profile?.timezone} />
+          {/* <InfoRow icon="time-outline" label="Timezone" value={profile?.timezone} /> */}
         </SectionCard>
 
         {/* ── Account Activity ── */}
@@ -360,11 +358,11 @@ export default function ProfileScreen() {
         {/* ── Auth Provider ── */}
         <SectionCard title="Sign-In Method">
           <View style={styles.providerRow}>
-            <Ionicons
-              name={profile?.provider === 'google' ? 'logo-google' : 'phone-portrait-outline'}
-              size={22}
-              color={profile?.provider === 'google' ? '#DB4437' : '#4B65E4'}
-            />
+            {profile?.provider === 'google' ? (
+              <GoogleLogo size={22} />
+            ) : (
+              <Ionicons name="phone-portrait-outline" size={22} color="#4B65E4" />
+            )}
             <Text style={styles.providerText}>
               {profile?.provider === 'google' ? 'Google Account' : 'Phone Number (OTP)'}
             </Text>
@@ -383,11 +381,9 @@ export default function ProfileScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F5F6FA' },
-  scroll: { paddingHorizontal: 16, paddingBottom: 20 },
+  scroll: { paddingHorizontal: DIMENSIONS.paddingHorizontal, paddingBottom: DIMENSIONS.paddingBottom },
 
   // Header
   header: {
@@ -405,8 +401,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center',
   },
 
-  // Avatar section
-  avatarSection: { alignItems: 'center', paddingVertical: 28 },
+  avatarSection: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28, width: '100%' },
   avatarContainer: {
     position: 'relative',
     alignSelf: 'center',
@@ -453,10 +448,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitials: { fontSize: 32, fontWeight: '800', color: '#FFF' },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 6 },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  verifiedText: { fontSize: 13, color: '#4B65E4', fontWeight: '600' },
-  memberSince: { fontSize: 12, color: '#999' },
+  profileName: { fontSize: 22, fontWeight: '800', color: '#1A1A1A', marginBottom: 4, textAlign: 'center' },
+  memberSince: { fontSize: 12, color: '#999', textAlign: 'center' },
 
   // Stats
   statsRow: {

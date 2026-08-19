@@ -91,7 +91,7 @@ export default function BillDetailsScreen() {
 
     try {
       setDownloadingId(attachmentId);
-      
+
       const res = await getAttachmentDownloadUrl(attachmentId);
       if (!res.success || !res.data.download_url) {
         Alert.alert('Download Error', 'Could not retrieve download link.');
@@ -104,12 +104,12 @@ export default function BillDetailsScreen() {
       const localUri = FileSystem.cacheDirectory + cleanFileName;
 
       const downloadRes = await FileSystem.downloadAsync(downloadUrl, localUri);
-      
+
       setDownloadingId(null);
 
       if (Platform.OS === 'android') {
         const mime = cleanFileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg';
-        
+
         const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
         if (!permissions.granted) {
           Alert.alert('Save Cancelled', 'Permission was not granted to save the file.');
@@ -244,15 +244,15 @@ export default function BillDetailsScreen() {
           <Text style={styles.headerAmount}>{formatAmount(bill.total_amount, bill.currency)}</Text>
           <Text style={styles.headerInvoice}>{bill.invoice_number}</Text>
           <View style={styles.headerDateBadge}>
-             <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
-             <Text style={styles.headerDate}>{formatDate(bill.purchase_date)}</Text>
+            <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
+            <Text style={styles.headerDate}>{formatDate(bill.purchase_date)}</Text>
           </View>
         </View>
       </View>
 
       <ScrollView
         style={{ zIndex: 10, elevation: 10 }}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.round(height * 0.06),paddingTop:35 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.round(height * 0.06), paddingTop: 35 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Action Buttons (Overlapping) */}
@@ -261,7 +261,7 @@ export default function BillDetailsScreen() {
             <Ionicons name="download-outline" size={20} color="#4B65E4" />
             <Text style={styles.actionCardText}>Download</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionCardBtn} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={20} color="#4B65E4" />
             <Text style={styles.actionCardText}>Share Bill</Text>
@@ -293,74 +293,74 @@ export default function BillDetailsScreen() {
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>FINANCIAL BREAKDOWN</Text>
           </View>
-          
+
           <InfoRow label="Subtotal" value={formatAmount(bill.subtotal, bill.currency)} />
           <InfoRow label="Tax" value={formatAmount(bill.tax_amount, bill.currency)} />
           <InfoRow label="Discount" value={formatAmount(bill.discount_amount, bill.currency)} />
-          
+
           <View style={styles.divider} />
-          
+
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Amount</Text>
             <Text style={styles.totalValue}>{formatAmount(bill.total_amount, bill.currency)}</Text>
           </View>
-          
+
           <View style={styles.statusRow}>
             <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
               <Text style={[styles.statusText, { color: status.text }]}>{status.label}</Text>
             </View>
-            {bill.bill_status ? (
+            {/* {bill.bill_status ? (
               <View style={[styles.statusBadge, { backgroundColor: BILL_STATUS[bill.bill_status]?.bg ?? '#F3F4F6' }]}>
                 <Text style={[styles.statusText, { color: BILL_STATUS[bill.bill_status]?.text ?? '#6B7280' }]}>
                   {BILL_STATUS[bill.bill_status]?.label ?? bill.bill_status}
                 </Text>
               </View>
-            ) : null}
+            ) : null} */}
           </View>
         </View>
 
         {bill.warranty_until ? (
           <View style={styles.card}>
-             <View style={styles.cardHeaderRow}>
-               <Text style={styles.cardTitle}>WARRANTY & REMINDERS</Text>
-             </View>
-             <View style={styles.warrantyItem}>
-               <Ionicons name="shield-checkmark-outline" size={24} color="#059669" />
-               <View style={{ flex: 1 }}>
-                 <Text style={styles.warrantyTitle}>Active Warranty</Text>
-                 <Text style={styles.warrantySubtitle}>Expires {formatDate(bill.warranty_until)}</Text>
-               </View>
-               {warrantyDays !== null ? (
-                 <View style={styles.daysPill}>
-                   <Text style={styles.daysValue}>{warrantyDays}</Text>
-                   <Text style={styles.daysLabel}>Days Left</Text>
-                 </View>
-               ) : null}
-             </View>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>WARRANTY & REMINDERS</Text>
+            </View>
+            <View style={styles.warrantyItem}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#059669" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.warrantyTitle}>Active Warranty</Text>
+                <Text style={styles.warrantySubtitle}>Expires {formatDate(bill.warranty_until)}</Text>
+              </View>
+              {warrantyDays !== null ? (
+                <View style={styles.daysPill}>
+                  <Text style={styles.daysValue}>{warrantyDays}</Text>
+                  <Text style={styles.daysLabel}>Days Left</Text>
+                </View>
+              ) : null}
+            </View>
 
-             {bill.reminders && bill.reminders.length > 0 ? (
-               <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 }}>
-                 <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 8, letterSpacing: 0.5 }}>
-                   SCHEDULED REMINDERS
-                 </Text>
-                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                   {bill.reminders.map((r: string) => {
-                     const labelMap: Record<string, string> = {
-                       '30_DAYS': '30 Days Before',
-                       '7_DAYS': '7 Days Before',
-                       '1_DAY': '1 Day Before',
-                       '1_HOUR': '1 Hour Before',
-                     };
-                     return (
-                       <View key={r} style={styles.reminderBadge}>
-                         <Ionicons name="notifications-outline" size={13} color="#4B65E4" style={{ marginRight: 4 }} />
-                         <Text style={styles.reminderBadgeText}>{labelMap[r] || r}</Text>
-                       </View>
-                     );
-                   })}
-                 </View>
-               </View>
-             ) : null}
+            {bill.reminders && bill.reminders.length > 0 ? (
+              <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', marginBottom: 8, letterSpacing: 0.5 }}>
+                  SCHEDULED REMINDERS
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {bill.reminders.map((r: string) => {
+                    const labelMap: Record<string, string> = {
+                      '30_DAYS': '30 Days Before',
+                      '7_DAYS': '7 Days Before',
+                      '1_DAY': '1 Day Before',
+                      '1_HOUR': '1 Hour Before',
+                    };
+                    return (
+                      <View key={r} style={styles.reminderBadge}>
+                        <Ionicons name="notifications-outline" size={13} color="#4B65E4" style={{ marginRight: 4 }} />
+                        <Text style={styles.reminderBadgeText}>{labelMap[r] || r}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
           </View>
         ) : null}
 

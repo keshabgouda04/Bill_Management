@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreateFamily, useGetPendingInvitations, useAcceptInvitation, useRejectInvitation } from '../api/familyApi';
 import PendingInvitationCard from '../components/PendingInvitationCard';
+import { validateName, checkCharLimit } from '../../../utils/validators';
 
 interface CreateFamilyScreenProps {
   onBack: () => void;
@@ -33,11 +34,14 @@ export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) 
     ? rawData
     : rawData?.data?.invitations || rawData?.invitations || rawData?.data || [];
 
+
+
   console.log(pendingInvitations, "pendingInvitations");
 
   const handleCreate = () => {
-    if (!familyName.trim()) {
-      Alert.alert('Validation Error', 'Please enter a family name.');
+    const familyNameErr = validateName(familyName, 'Family name', 20);
+    if (familyNameErr) {
+      Alert.alert('Validation Error', familyNameErr);
       return;
     }
     
@@ -126,14 +130,25 @@ export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) 
               Start a family workspace to manage, view, and share bills with your household members.
             </Text>
 
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 6 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#555' }}>Family Name</Text>
+              <Text style={{ fontSize: 11, fontWeight: '500', color: familyName.length >= 20 ? '#EF4444' : '#888' }}>
+                {familyName.length}/20
+              </Text>
+            </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, checkCharLimit(familyName, 20) ? { borderColor: '#EF4444' } : null]}
               placeholder="e.g. The Smith Family"
               placeholderTextColor="#999"
               value={familyName}
               onChangeText={setFamilyName}
-              maxLength={50}
+              maxLength={20}
             />
+            {checkCharLimit(familyName, 20) && (
+              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4, fontWeight: '500' }}>
+              {checkCharLimit(familyName, 20, 'Family name')}
+              </Text>
+            )}
 
             <TouchableOpacity 
               style={[styles.createButton, createFamilyMutation.isPending && styles.createButtonDisabled]}

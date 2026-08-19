@@ -1,4 +1,7 @@
 import type { BillDetail } from '../api/billsApi';
+import { formatDate, formatTimeAgo } from '../../../utils/dateUtils';
+
+export { formatDate, formatTimeAgo };
 
 const PHOTO_FIELDS: Array<keyof BillDetail> = [
   'photo_url',
@@ -24,19 +27,6 @@ export function formatAmount(amount?: number, currency = 'INR'): string {
   } catch {
     return `${currency} ${amount.toLocaleString('en-IN')}`;
   }
-}
-
-export function formatDate(date?: string | null): string {
-  if (!date) return '-';
-
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return '-';
-
-  return parsed.toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
 }
 
 export function getPhotoUri(bill: BillDetail): string | null {

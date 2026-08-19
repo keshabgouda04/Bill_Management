@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BillItem } from '../api/billsApi';
+import { validateName } from '../../upload/utils/uploadUtils';
 
 const sanitizePrice = (text: string): string => {
   return text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
@@ -71,8 +72,9 @@ export default function EditProductModal({
   }, [visible, product]);
 
   const handleSave = () => {
-    if (!productName.trim()) {
-      Alert.alert('Required Field', 'Please enter a product name.');
+    const productNameErr = validateName(productName, 'Product name');
+    if (productNameErr) {
+      Alert.alert('Invalid Product Name', productNameErr);
       return;
     }
 

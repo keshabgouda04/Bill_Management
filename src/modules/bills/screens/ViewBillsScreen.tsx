@@ -10,7 +10,10 @@ import {
   Dimensions,
   Keyboard,
   Platform,
+  Alert,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -143,6 +146,64 @@ export default function ViewBillsScreen() {
     }
   };
 
+  const handleUploadBill = async () => {
+    Alert.alert(
+      'Upload Bill',
+      'Choose how you would like to upload your bill or receipt:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Take Photo (Camera)',
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission Required', 'Camera permission is needed to take a photo.');
+              return;
+            }
+            try {
+              const res = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                quality: 0.9,
+              });
+              if (!res.canceled && res.assets?.length > 0) {
+                const file = res.assets[0];
+                navigation.navigate('BillReview', {
+                  fileUri: file.uri,
+                  fileName: file.fileName || 'scanned_bill.jpg',
+                  fileType: file.mimeType || 'image/jpeg',
+                });
+              }
+            } catch {
+              Alert.alert('Error', 'Could not open camera.');
+            }
+          },
+        },
+        {
+          text: 'Choose PDF / Image File',
+          onPress: async () => {
+            try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+              if (!result.canceled && result.assets?.length > 0) {
+                const file = result.assets[0];
+                navigation.navigate('BillReview', {
+                  fileUri: file.uri,
+                  fileName: file.name || 'uploaded_bill.pdf',
+                  fileType: file.mimeType || 'application/pdf',
+                });
+              }
+            } catch {
+              Alert.alert('Error', 'Could not open file picker.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const toggleSearch = () => {
     if (isSearchVisible) {
       setSearchQuery('');
@@ -264,15 +325,28 @@ export default function ViewBillsScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={64} color="#CCC" />
-              <Text style={styles.emptyText}>
-                {searchQuery.trim() ? 'No results found' : 'No bills here yet'}
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="receipt-outline" size={44} color="#0052CC" />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {searchQuery.trim() ? 'No results found' : 'No Bills Added Yet'}
               </Text>
-              <Text style={[styles.emptyText, { fontSize: 13, marginTop: 6 }]}>
+              <Text style={styles.emptySubtitle}>
                 {searchQuery.trim()
                   ? `No bills match your search "${searchQuery}"`
-                  : 'Upload a bill or select a different category to view details.'}
+                  : 'Start tracking your bills and warranties by uploading your first receipt.'}
               </Text>
+
+              {!searchQuery.trim() && (
+                <TouchableOpacity
+                  style={styles.addBillBtn}
+                  activeOpacity={0.85}
+                  onPress={handleUploadBill}
+                >
+                  <Ionicons name="add-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.addBillBtnText}>Upload New Bill</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
           onEndReached={() => {
@@ -301,19 +375,19 @@ export default function ViewBillsScreen() {
       {!isKeyboardVisible && (
         <View style={[styles.summaryBox, { bottom: Math.max(Math.round(height * 0.16)) }]}>
           <View style={styles.summaryItem}>
-          <Ionicons name="document-text-outline" size={20} color="#0052CC" style={styles.summaryIcon} />
-          <View>
-            <Text style={styles.summaryLabel}>Total Bills</Text>
-            <Text style={styles.summaryValue}>{totalBillsCount}</Text>
+            <Ionicons name="document-text-outline" size={20} color="#0052CC" style={styles.summaryIcon} />
+            <View>
+              <Text style={styles.summaryLabel}>Total Bills</Text>
+              <Text style={styles.summaryValue}>{totalBillsCount}</Text>
+            </View>
+          </View>
+          <View style={styles.summaryItem}>
+            <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
+              <Text style={styles.summaryLabel}>Total Amount</Text>
+              <Text style={styles.summaryValueAmount}>₹{totalAmount.toLocaleString('en-IN')}</Text>
+            </View>
           </View>
         </View>
-        <View style={styles.summaryItem}>
-          <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
-            <Text style={styles.summaryLabel}>Total Amount</Text>
-            <Text style={styles.summaryValueAmount}>₹{totalAmount.toLocaleString('en-IN')}</Text>
-          </View>
-        </View>
-      </View>
       )}
     </SafeAreaView>
   );
@@ -413,7 +487,51 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 80,
+    paddingHorizontal: 24,
+    paddingTop: 50,
+    paddingBottom: 40,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E0E8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
+    marginBottom: 20,
+  },
+  addBillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0052CC',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: '#0052CC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addBillBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   emptyText: {
     marginTop: 15,

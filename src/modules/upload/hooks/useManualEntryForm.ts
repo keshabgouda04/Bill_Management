@@ -8,6 +8,14 @@ import {
   parseDateTextToDate,
   formatDateToDDMMYYYY,
   sanitizePrice,
+  validateName,
+  validateInvoiceNumber,
+  checkCharLimit,
+  hasEmoji,
+  validateQuantity,
+  validateLiveField,
+  updateFieldErrors,
+  validateSerialNumber,
 } from '../utils/uploadUtils';
 
 export interface Product {
@@ -26,10 +34,16 @@ export const useManualEntryForm = (onClose: () => void) => {
   const mutation = useCreateManualBill();
 
   // Required fields
-  const [billName, setBillName] = useState('');
+  const [billName, setBillNameState] = useState('');
   const [billAmount, setBillAmount] = useState('');
   const [billDate, setBillDate] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const setBillName = (val: string) => {
+    setBillNameState(val);
+    const err = validateLiveField(val, { maxLength: 100, disallowEmoji: true, label: 'Store name' });
+    setErrors((prev) => updateFieldErrors(prev, 'billName', err));
+  };
 
   // Date picker visibility states
   const [showPurchasePicker, setShowPurchasePicker] = useState(false);
@@ -37,18 +51,30 @@ export const useManualEntryForm = (onClose: () => void) => {
   const [tempDate, setTempDate] = useState(new Date());
 
   // Optional backend fields
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumberState] = useState('');
+
+  const setInvoiceNumber = (val: string) => {
+    setInvoiceNumberState(val);
+    const err = validateLiveField(val, { maxLength: 25, disallowEmoji: true, label: 'Invoice number' });
+    setErrors((prev) => updateFieldErrors(prev, 'invoiceNumber', err));
+  };
   const [taxAmount, setTaxAmount] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
   const [billCategory, setBillCategory] = useState(''); // no default category
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [billNotes, setBillNotes] = useState('');
+  const [billNotes, setBillNotesState] = useState('');
+
+  const setBillNotes = (val: string) => {
+    setBillNotesState(val);
+    const err = validateLiveField(val, { maxLength: 500, label: 'Notes' });
+    setErrors((prev) => updateFieldErrors(prev, 'billNotes', err));
+  };
 
   // Warranty & Reminders state
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
-  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>(['7_DAYS', '1_DAY']);
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>([]);
 
   const handleToggleReminder = (type: '30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR') => {
     setSelectedReminders((prev) =>
@@ -58,12 +84,30 @@ export const useManualEntryForm = (onClose: () => void) => {
 
   // Products (bill_items) state
   const [products, setProducts] = useState<Product[]>([]);
-  const [productName, setProductName] = useState('');
-  const [productDescription, setProductDescription] = useState('');
+  const [productName, setProductNameState] = useState('');
+
+  const setProductName = (val: string) => {
+    setProductNameState(val);
+    const err = validateLiveField(val, { maxLength: 100, disallowEmoji: true, label: 'Product name' });
+    setErrors((prev) => updateFieldErrors(prev, 'productName', err));
+  };
+  const [productDescription, setProductDescriptionState] = useState('');
+
+  const setProductDescription = (val: string) => {
+    setProductDescriptionState(val);
+    const err = validateLiveField(val, { maxLength: 500, label: 'Description' });
+    setErrors((prev) => updateFieldErrors(prev, 'productDescription', err));
+  };
   const [productQty, setProductQty] = useState('1');
   const [productUnitPrice, setProductUnitPrice] = useState('');
   const [productTax, setProductTax] = useState('');
-  const [productSerialNumber, setProductSerialNumber] = useState('');
+  const [productSerialNumber, setProductSerialNumberState] = useState('');
+
+  const setProductSerialNumber = (val: string) => {
+    setProductSerialNumberState(val);
+    const err = validateLiveField(val, { maxLength: 50, disallowEmoji: true, requireAlphanumeric: true, disallowDot: true, label: 'Serial number' });
+    setErrors((prev) => updateFieldErrors(prev, 'productSerialNumber', err));
+  };
   const [productWarrantyMonths, setProductWarrantyMonths] = useState('');
   const [showProductExtras, setShowProductExtras] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any | null>(null);
@@ -144,8 +188,9 @@ export const useManualEntryForm = (onClose: () => void) => {
   const handleAddProduct = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!productName.trim()) {
-      newErrors.productName = 'Please enter a product name.';
+    const productNameError = validateName(productName, 'Product name');
+    if (productNameError) {
+      newErrors.productName = productNameError;
     }
 
     const parsedPrice = parseFloat(productUnitPrice);
@@ -153,9 +198,9 @@ export const useManualEntryForm = (onClose: () => void) => {
       newErrors.productUnitPrice = 'Please enter a valid unit price.';
     }
 
-    const parsedQty = productQty.trim() ? parseFloat(productQty) : 1;
-    if (isNaN(parsedQty) || parsedQty <= 0) {
-      newErrors.productQty = 'Please enter a valid quantity.';
+    const qtyError = validateQuantity(productQty);
+    if (qtyError) {
+      newErrors.productQty = qtyError;
     }
 
     const parsedTax = productTax.trim() ? parseFloat(productTax) : undefined;
@@ -170,6 +215,11 @@ export const useManualEntryForm = (onClose: () => void) => {
       newErrors.productWarrantyMonths = 'Please enter a valid number of warranty months.';
     }
 
+    const serialError = validateSerialNumber(productSerialNumber, 50);
+    if (serialError) {
+      newErrors.productSerialNumber = serialError;
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(prev => ({ ...prev, ...newErrors }));
       return;
@@ -177,9 +227,11 @@ export const useManualEntryForm = (onClose: () => void) => {
 
     // Clear product errors on success
     setErrors(prev => {
-      const { productName, productUnitPrice, productQty, productTax, productWarrantyMonths, ...rest } = prev;
+      const { productName, productUnitPrice, productQty, productTax, productWarrantyMonths, productDescription, productSerialNumber, ...rest } = prev;
       return rest;
     });
+
+    const parsedQty = parseInt(productQty.trim(), 10) || 1;
 
     const newProduct: Product = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -215,8 +267,10 @@ export const useManualEntryForm = (onClose: () => void) => {
       newErrors.form = 'You have unsaved product info. Please tap "Add Product" first.';
     }
 
-    if (!billName.trim()) newErrors.billName = 'Please enter a Bill Name/Merchant.';
-    if (!invoiceNumber.trim()) newErrors.invoiceNumber = 'Please enter an Invoice Number.';
+    const storeNameError = validateName(billName, 'Store name', 100);
+    if (storeNameError) newErrors.billName = storeNameError;
+    const invoiceError = validateInvoiceNumber(invoiceNumber, 25);
+    if (invoiceError) newErrors.invoiceNumber = invoiceError;
     if (!billDate.trim()) newErrors.billDate = 'Please select a Purchase Date.';
     if (!billCategory) newErrors.billCategory = 'Please select a category.';
 
