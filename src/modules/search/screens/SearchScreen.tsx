@@ -76,7 +76,7 @@ export default function SearchScreen() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search invoice #, store, items..."
+            placeholder="Search bills or invoices..."
             placeholderTextColor="#999"
             style={styles.searchInput}
             autoFocus

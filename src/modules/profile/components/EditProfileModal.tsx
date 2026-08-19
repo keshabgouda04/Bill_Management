@@ -12,10 +12,13 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
   Alert,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUpdateProfileDetails } from '../../profile/api/profileApi';
 import { UserProfile } from '../../../services/query/profile/profile';
+import { DIMENSIONS, hp } from '../../../components/common';
+import { validateName } from '../../../utils/validators';
 
 interface EditProfileModalProps {
   visible: boolean;
@@ -28,6 +31,8 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
   const [editCountry, setEditCountry]   = useState('');
   const [editLanguage, setEditLanguage] = useState('');
   const [editTimezone, setEditTimezone] = useState('');
+  const [nameError, setNameError]       = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   const mutation = useUpdateProfileDetails();
 
@@ -37,16 +42,43 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
       setEditCountry(profile.country || '');
       setEditLanguage(profile.language || '');
       setEditTimezone(profile.timezone || '');
+      setNameError(null);
     }
   }, [profile]);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const handleNameChange = (text: string) => {
+    setEditFullName(text);
+    if (!text.trim()) {
+      setNameError(null);
+      return;
+    }
+    const err = validateName(text, 'Full name', 40);
+    setNameError(err);
+  };
 
   const handleSaveEdit = () => {
     const trimmedName = editFullName.trim();
     
     if (trimmedName) {
-      const nameRegex = /^[a-zA-Z\s]{2,50}$/;
-      if (!nameRegex.test(trimmedName)) {
-        Alert.alert('Invalid Name', 'Full name must be at least 2 characters and contain only letters.');
+      const err = validateName(trimmedName, 'Full name', 40);
+      if (err) {
+        setNameError(err);
         return;
       }
     }
@@ -100,15 +132,31 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.fieldLabel}>Name</Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={isKeyboardVisible}
+            contentContainerStyle={
+              isKeyboardVisible
+                ? { paddingBottom: hp(38), flexGrow: 1 }
+                : { paddingBottom: hp(3) }
+            }
+          >
+            <View style={styles.labelRow}>
+              <Text style={styles.fieldLabel}>Name</Text>
+              <Text style={[styles.charCounter, editFullName.length > 40 && styles.charCounterError]}>
+                {editFullName.length}/40
+              </Text>
+            </View>
             <TextInput
-              style={styles.fieldInput}
+              style={[styles.fieldInput, nameError ? styles.fieldInputError : null]}
               placeholder="e.g. Keshab Gouda"
               placeholderTextColor="#BBB"
               value={editFullName}
-              onChangeText={setEditFullName}
+              onChangeText={handleNameChange}
+              maxLength={40}
             />
+            {nameError ? <Text style={styles.inlineErrorText}>{nameError}</Text> : null}
 
             {/* <Text style={styles.fieldLabel}>Country</Text>
             <TextInput
@@ -119,7 +167,7 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
               onChangeText={setEditCountry}
             /> */}
 
-            <Text style={styles.fieldLabel}>Language</Text>
+            <Text style={[styles.fieldLabel, { marginBottom: 6}]}>Language</Text>
             <TextInput
               style={styles.fieldInput}
               placeholder="e.g. English"
@@ -128,14 +176,14 @@ export const EditProfileModal = ({ visible, onClose, profile }: EditProfileModal
               onChangeText={setEditLanguage}
             />
 
-            <Text style={styles.fieldLabel}>Timezone</Text>
-            <TextInput
+            {/* <Text style={styles.fieldLabel}>Timezone</Text> */}
+            {/* <TextInput
               style={styles.fieldInput}
               placeholder="e.g. Asia/Kolkata"
               placeholderTextColor="#BBB"
               value={editTimezone}
               onChangeText={setEditTimezone}
-            />
+            /> */}
 
             <TouchableOpacity
               style={[styles.saveBtn, mutation.isPending && styles.saveBtnDisabled]}
@@ -166,8 +214,13 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
   },
   modalSheet: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 24, maxHeight: '90%',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 24,
+    maxHeight: '88%',
   },
   grabHandle: {
     width: 36, height: 5, borderRadius: 3,
@@ -183,11 +236,37 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#F5F6FA', justifyContent: 'center', alignItems: 'center',
   },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 14 },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555' },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  charCounter: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  charCounterError: {
+    color: '#EF4444',
+    fontWeight: '700',
+  },
   fieldInput: {
     height: 50, borderWidth: 1.5, borderColor: '#E8E8E8',
     borderRadius: 12, paddingHorizontal: 14, fontSize: 15,
     color: '#1A1A1A', backgroundColor: '#FAFAFA',
+  },
+  fieldInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  inlineErrorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+    fontWeight: '500',
   },
   phoneRow: {
     flexDirection: 'row', alignItems: 'center',

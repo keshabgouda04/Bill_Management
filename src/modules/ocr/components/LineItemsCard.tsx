@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { validateName, sanitizeQuantity, validateQuantity } from '../../../utils/validators';
 
 const sanitizePrice = (text: string): string => {
   return text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
@@ -42,16 +43,18 @@ export default function LineItemsCard({
   const [newProductTax, setNewProductTax] = useState('0');
 
   const handleAdd = () => {
-    if (!newProductName.trim()) {
-      Alert.alert('Required field', 'Please enter item name.');
+    const nameErr = validateName(newProductName, 'Item name');
+    if (nameErr) {
+      Alert.alert('Validation Error', nameErr);
+      return;
+    }
+    const qtyErr = validateQuantity(newProductQty);
+    if (qtyErr) {
+      Alert.alert('Validation Error', qtyErr);
       return;
     }
     const qty = parseInt(newProductQty, 10);
     const price = parseFloat(newProductPrice);
-    if (isNaN(qty) || qty <= 0) {
-      Alert.alert('Invalid format', 'Please enter a valid quantity.');
-      return;
-    }
     if (isNaN(price) || price < 0) {
       Alert.alert('Invalid format', 'Please enter a valid unit price.');
       return;
@@ -114,6 +117,7 @@ export default function LineItemsCard({
             value={newProductName}
             onChangeText={setNewProductName}
             placeholder="Product Name"
+            maxLength={100}
           />
 
           <View style={styles.row}>
@@ -122,9 +126,10 @@ export default function LineItemsCard({
               <TextInput
                 style={styles.inlineInput}
                 value={newProductQty}
-                onChangeText={setNewProductQty}
-                keyboardType="numeric"
+                onChangeText={(text) => setNewProductQty(sanitizeQuantity(text))}
+                keyboardType="number-pad"
                 placeholder="1"
+                maxLength={6}
               />
             </View>
             <View style={styles.col}>
@@ -135,6 +140,7 @@ export default function LineItemsCard({
                 onChangeText={(text) => setNewProductPrice(sanitizePrice(text))}
                 keyboardType="numeric"
                 placeholder="0.00"
+                maxLength={10}
               />
             </View>
             <View style={styles.col}>
@@ -145,6 +151,7 @@ export default function LineItemsCard({
                 onChangeText={(text) => setNewProductTax(sanitizePrice(text))}
                 keyboardType="numeric"
                 placeholder="0"
+                maxLength={10}
               />
             </View>
           </View>

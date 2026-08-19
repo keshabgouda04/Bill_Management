@@ -15,6 +15,7 @@ export interface UpdateBillPayload {
   payment_status?: PaymentStatus;
   bill_status?: BillStatus;
   warranty_until?: string | null;
+  reminders?: Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>;
   purchase_location?: string;
   notes?: string;
   category_id?: string | null;

@@ -21,6 +21,7 @@ import { AuthStackParamList } from '../../../navigation/AuthNavigator';
 import { sendOtp, loginWithGoogle } from '../api/authApi';
 import LoginButton from '../components/LoginButton';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GoogleLogo } from '../../../components/common/GoogleLogo';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -109,7 +110,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <Text style={styles.countryCode}>+91</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="12345 67890"
+                  placeholder="Enter phone number"
                   placeholderTextColor="#999"
                   keyboardType="phone-pad"
                   maxLength={10}
@@ -126,6 +127,7 @@ export default function LoginScreen({ navigation }: Props) {
               title="Continue"
               onPress={handleSendOtp}
               loading={loading}
+              disabled={phoneNumber.length !== 10}
             />
 
             {/* OAuth Dividers & Buttons */}
@@ -141,7 +143,7 @@ export default function LoginScreen({ navigation }: Props) {
               activeOpacity={0.8}
               disabled={loading}
             >
-              <Ionicons name="logo-google" size={20} color="#DB4437" />
+              <GoogleLogo size={20} />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
           </ScrollView>

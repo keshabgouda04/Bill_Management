@@ -4,23 +4,80 @@ export interface Category {
 }
 
 export const CATEGORIES: Category[] = [
-  { id: '3334f0da-b7ce-4c9d-bc26-d0ae0374fed1', name: 'Groceries' },
-  { id: '6644910b-b733-47b7-85f9-48d0ca6fc86a', name: 'Dining' },
-  { id: 'ba621ad1-a786-44c6-ae6e-13f53380a75c', name: 'Utilities' },
-  { id: 'ef84449d-36e0-4df3-892f-aff668c051c9', name: 'Transportation' },
-  { id: '04546ff9-bb72-4786-825d-85583aa58f49', name: 'Entertainment' },
-  { id: 'efd8855d-a6c5-45ce-9c11-8025c6cb8c89', name: 'Electronics' },
-  { id: '83043609-6e75-4d93-82b9-c439deec42d2', name: 'Shopping' },
-  { id: '60018b6c-0aef-4f3b-ad68-6a9035676df2', name: 'Healthcare' },
-  { id: 'a1cb7d86-f8bb-4e43-a747-e551f4efcf74', name: 'Education' },
-  { id: 'e71537dc-c15c-4875-8b50-b2b7c5378be5', name: 'Travel' },
-  { id: '0fb1ddb0-d3a3-44d6-8602-363edbc78959', name: 'Home & Furniture' },
-  { id: '64a265f6-617f-4643-a753-0aac2f3df3e9', name: 'Fashion' },
-  { id: '3aa49dcc-74ee-448e-8425-cecef36265d7', name: 'Insurance' },
-  { id: 'aea62965-dc00-4418-8290-3bdc33f1fd1e', name: 'Business' },
-  { id: 'e017f7ac-9932-44cb-bceb-b01fe171fa62', name: 'Subscription' },
-  { id: 'f27c6346-1d5e-4da4-945a-a70b99c431f0', name: 'Pet Care' },
-  { id: 'ae01487b-2a6e-4438-b018-7fb6005dfbde', name: 'Gifts' },
-  { id: '64f833b5-6566-4e49-939d-98bd63b845fb', name: 'Taxes' },
-  { id: 'b9bfcee8-6d48-4e17-9c07-b76fc4660e40', name: 'Others' },
+  {
+    "id": "e8dc38e5-e3b0-4799-9a7d-c84cccec946b",
+    "name": "Groceries"
+  },
+  {
+    "id": "823e8e74-ac7d-44b2-b629-1d75f2ac9880",
+    "name": "Dining"
+  },
+  {
+    "id": "a8c399f9-2c7b-43e7-83b8-a5bd3f5d02c2",
+    "name": "Utilities"
+  },
+  {
+    "id": "bc2e5d69-32d4-41e6-9bf1-76b62a38b2c7",
+    "name": "Transportation"
+  },
+  {
+    "id": "bfffa3be-91e5-4d0c-ad6e-c4a017d17b34",
+    "name": "Entertainment"
+  },
+  {
+    "id": "6afcb160-d087-4e06-9523-8e5c8050b110",
+    "name": "Electronics"
+  },
+  {
+    "id": "8abeda0a-a91e-4367-b785-3479609fb4d9",
+    "name": "Shopping"
+  },
+  {
+    "id": "8eba8032-239f-4d0a-9002-f4373610063a",
+    "name": "Healthcare"
+  },
+  {
+    "id": "57461258-b6b2-4235-b916-73b656a1c995",
+    "name": "Education"
+  },
+  {
+    "id": "6a55c48c-4fe9-403b-a1d2-38f95830b23b",
+    "name": "Travel"
+  },
+  {
+    "id": "5cdfbaf1-c438-4547-b02b-d611f9396e3a",
+    "name": "Home & Furniture"
+  },
+  {
+    "id": "6ec89b8b-c9cb-4995-89db-852892c111c7",
+    "name": "Fashion"
+  },
+  {
+    "id": "cab7a4e3-e0d1-4c37-aac1-c210c339c3ee",
+    "name": "Insurance"
+  },
+  {
+    "id": "ecf6c767-c513-42ee-8295-c4f409c34b83",
+    "name": "Business"
+  },
+  {
+    "id": "55cf5d04-a177-4548-a60b-e64f33622213",
+    "name": "Subscription"
+  },
+  {
+    "id": "d8a13c96-66ee-4594-b084-97a2fdb6e010",
+    "name": "Pet Care"
+  },
+  {
+    "id": "f8801b34-2d97-4d01-8d8c-11da92ee9ed6",
+    "name": "Gifts"
+  },
+  {
+    "id": "37afd0d7-276b-4a46-8c4e-cff73a844782",
+    "name": "Taxes"
+  },
+  {
+    "id": "6f3eefb9-2b6b-4860-8df0-18c06d389933",
+    "name": "Others"
+  }
 ];

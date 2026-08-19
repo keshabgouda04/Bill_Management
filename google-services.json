@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "115057596888",
+    "project_id": "wallely",
+    "storage_bucket": "wallely.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115057596888:android:1c1151ab6beb809b3c7aad",
+        "android_client_info": {
+          "package_name": "com.wallely"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwhubfdFHGkJlpqA9WDiZLj1ZBk--PGWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

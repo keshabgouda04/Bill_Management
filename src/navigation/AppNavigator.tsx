@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -11,28 +11,46 @@ import { BillDetailsScreen } from '../modules/bills';
 import { SearchScreen } from '../modules/search';
 import { BillReviewScreen } from '../modules/ocr';
 import { ManualEntryScreen } from '../modules/upload';
+import FamilyHomeScreen from '../modules/family/screens/FamilyHomeScreen';
+import { initializeFCMNotificationService } from '../services/messagingService';
 
 export type AppStackParamList = {
   ProfileSetup: undefined;
   MainTabs: undefined;
   Dashboard: undefined;
   Profile: undefined;
+  Cards: undefined;
   Categories: undefined;
   ViewBills: undefined;
   Search?: { initialQuery?: string };
-  BillDetails: { billId: string };
+  BillDetails: { billId: string; sharedBillId?: string };
   BillReview: {
     fileUri: string;
     fileName: string;
     fileType: string;
   };
   ManualEntry: undefined;
+  FamilyHome: undefined;
 };
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export default function AppNavigator() {
   const { data, isLoading, isError, refetch } = useGetProfileDetails();
+
+  const profile = data?.profile;
+
+  useEffect(() => {
+    if (profile?.onboarding_completed) {
+      let cleanup: (() => void) | undefined;
+      initializeFCMNotificationService().then((unsub) => {
+        cleanup = unsub;
+      });
+      return () => {
+        if (cleanup) cleanup();
+      };
+    }
+  }, [profile?.onboarding_completed]);
 
   if (isLoading) {
     return <SplashScreen />;
@@ -62,7 +80,6 @@ export default function AppNavigator() {
     );
   }
 
-  const profile = data?.profile;
   console.log(profile, 'profile======>');
   const initialRoute = profile?.onboarding_completed ? 'MainTabs' : 'ProfileSetup';
 
@@ -84,6 +101,7 @@ export default function AppNavigator() {
       <Stack.Screen name="BillDetails" component={BillDetailsScreen} />
       <Stack.Screen name="BillReview" component={BillReviewScreen} />
       <Stack.Screen name="ManualEntry" component={ManualEntryScreen} />
+      <Stack.Screen name="FamilyHome" component={FamilyHomeScreen} />
     </Stack.Navigator>
   );
 }
