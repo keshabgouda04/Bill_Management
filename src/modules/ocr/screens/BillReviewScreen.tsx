@@ -34,6 +34,13 @@ import {
   parseDateTextToDate,
   formatDateToDDMMYYYY,
   sanitizePrice,
+  validateName,
+  validateInvoiceNumber,
+  hasEmoji,
+  validateQuantity,
+  validateLiveField,
+  updateFieldErrors,
+  validateSerialNumber,
 } from '../../upload/utils/uploadUtils';
 
 import { useCreateManualBill } from '../../bills/api/billsApi';
@@ -61,8 +68,20 @@ export default function BillReviewScreen() {
   const [scanError, setScanError] = useState<string | null>(null);
 
   // Form Fields (matching normal bill upload UI)
-  const [billName, setBillName] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [billName, setBillNameState] = useState('');
+  const [invoiceNumber, setInvoiceNumberState] = useState('');
+
+  const setBillName = (val: string) => {
+    setBillNameState(val);
+    const err = validateLiveField(val, { maxLength: 100, disallowEmoji: true, label: 'Store name' });
+    setErrors((prev) => updateFieldErrors(prev, 'billName', err));
+  };
+
+  const setInvoiceNumber = (val: string) => {
+    setInvoiceNumberState(val);
+    const err = validateLiveField(val, { maxLength: 25, disallowEmoji: true, label: 'Invoice number' });
+    setErrors((prev) => updateFieldErrors(prev, 'invoiceNumber', err));
+  };
   const [billCategory, setBillCategory] = useState('');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [billAmount, setBillAmount] = useState('');
@@ -75,12 +94,30 @@ export default function BillReviewScreen() {
 
   // Products
   const [products, setProducts] = useState<Product[]>([]);
-  const [productName, setProductName] = useState('');
-  const [productDescription, setProductDescription] = useState('');
+  const [productName, setProductNameState] = useState('');
+
+  const setProductName = (val: string) => {
+    setProductNameState(val);
+    const err = validateLiveField(val, { maxLength: 100, disallowEmoji: true, label: 'Product name' });
+    setErrors((prev) => updateFieldErrors(prev, 'productName', err));
+  };
+  const [productDescription, setProductDescriptionState] = useState('');
+
+  const setProductDescription = (val: string) => {
+    setProductDescriptionState(val);
+    const err = validateLiveField(val, { maxLength: 500, label: 'Description' });
+    setErrors((prev) => updateFieldErrors(prev, 'productDescription', err));
+  };
   const [productQty, setProductQty] = useState('1');
   const [productUnitPrice, setProductUnitPrice] = useState('');
   const [productTax, setProductTax] = useState('');
-  const [productSerialNumber, setProductSerialNumber] = useState('');
+  const [productSerialNumber, setProductSerialNumberState] = useState('');
+
+  const setProductSerialNumber = (val: string) => {
+    setProductSerialNumberState(val);
+    const err = validateLiveField(val, { maxLength: 50, disallowEmoji: true, requireAlphanumeric: true, disallowDot: true, label: 'Serial number' });
+    setErrors((prev) => updateFieldErrors(prev, 'productSerialNumber', err));
+  };
   const [productWarrantyMonths, setProductWarrantyMonths] = useState('');
   const [showProductExtras, setShowProductExtras] = useState(false);
 
@@ -88,12 +125,18 @@ export default function BillReviewScreen() {
   const [taxAmount, setTaxAmount] = useState('0.00');
   const [discountAmount, setDiscountAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'CASH' | 'NET_BANKING'>('UPI');
-  const [billNotes, setBillNotes] = useState('');
+  const [billNotes, setBillNotesState] = useState('');
+
+  const setBillNotes = (val: string) => {
+    setBillNotesState(val);
+    const err = validateLiveField(val, { maxLength: 500, label: 'Notes' });
+    setErrors((prev) => updateFieldErrors(prev, 'billNotes', err));
+  };
 
   // Warranty & Reminders
   const [hasWarranty, setHasWarranty] = useState(false);
   const [warrantyUntil, setWarrantyUntil] = useState('');
-  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>(['7_DAYS', '1_DAY']);
+  const [selectedReminders, setSelectedReminders] = useState<Array<'30_DAYS' | '7_DAYS' | '1_DAY' | '1_HOUR'>>([]);
 
   // Attachment
   const [selectedFile, setSelectedFile] = useState<any>({
@@ -268,8 +311,13 @@ export default function BillReviewScreen() {
   // Product addition
   const handleAddProduct = () => {
     const newErr: Record<string, string> = {};
-    if (!productName.trim()) newErr.productName = 'Product name is required';
+    const productNameErr = validateName(productName, 'Product name');
+    if (productNameErr) newErr.productName = productNameErr;
+    const qtyErr = validateQuantity(productQty);
+    if (qtyErr) newErr.productQty = qtyErr;
     if (!productUnitPrice.trim()) newErr.productUnitPrice = 'Unit price is required';
+    const serialErr = validateSerialNumber(productSerialNumber, 50);
+    if (serialErr) newErr.productSerialNumber = serialErr;
 
     if (Object.keys(newErr).length > 0) {
       setErrors((prev) => ({ ...prev, ...newErr }));
@@ -343,8 +391,10 @@ export default function BillReviewScreen() {
   // Submit / Save Bill
   const handleSaveBill = () => {
     const errMap: Record<string, string> = {};
-    if (!billName.trim()) errMap.billName = 'Merchant / Store name is required';
-    if (!invoiceNumber.trim()) errMap.invoiceNumber = 'Invoice number is required';
+    const storeNameErr = validateName(billName, 'Store name', 100);
+    if (storeNameErr) errMap.billName = storeNameErr;
+    const invoiceErr = validateInvoiceNumber(invoiceNumber, 25);
+    if (invoiceErr) errMap.invoiceNumber = invoiceErr;
     if (!billCategory) errMap.billCategory = 'Please select a category';
     if (!billDate.trim()) errMap.billDate = 'Purchase date is required';
 
@@ -505,6 +555,7 @@ export default function BillReviewScreen() {
             placeholderTextColor="#BBB"
             value={billName}
             onChangeText={setBillName}
+            maxLength={120}
           />
           {errors?.billName && <Text style={styles.errorText}>{errors.billName}</Text>}
 
@@ -515,6 +566,7 @@ export default function BillReviewScreen() {
             placeholderTextColor="#BBB"
             value={invoiceNumber}
             onChangeText={setInvoiceNumber}
+            maxLength={25}
           />
           {errors?.invoiceNumber && <Text style={styles.errorText}>{errors.invoiceNumber}</Text>}
 
@@ -819,16 +871,23 @@ export default function BillReviewScreen() {
             onSelectMethod={setPaymentMethod}
           />
 
-          <Text style={styles.fieldLabel}>Notes</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.fieldLabel}>Notes</Text>
+            <Text style={{ fontSize: 11, fontWeight: '500', color: billNotes.length >= 500 ? '#EF4444' : '#888', marginTop: 14, marginBottom: 6 }}>
+              {billNotes.length}/500
+            </Text>
+          </View>
           <TextInput
-            style={[styles.fieldInput, styles.fieldInputMulti]}
+            style={[styles.fieldInput, styles.fieldInputMulti, errors?.billNotes ? styles.inputError : null]}
             placeholder="Any additional details, descriptions or items..."
             placeholderTextColor="#BBB"
             multiline
             numberOfLines={3}
             value={billNotes}
             onChangeText={setBillNotes}
+            maxLength={500}
           />
+          {errors?.billNotes && <Text style={styles.errorText}>{errors.billNotes}</Text>}
 
           <AttachmentSelector
             selectedFile={selectedFile}

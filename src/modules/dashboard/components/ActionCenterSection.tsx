@@ -188,11 +188,11 @@ export const ActionCenterSection = () => {
           <View style={styles.cardHeader}>
             <Text style={styles.cardIcon}>🛡️</Text>
             <View style={[styles.tagBadge, { backgroundColor: '#22C55E15' }]}>
-              <Text style={[styles.tagText, { color: '#22C55E' }]}>SECURE</Text>
+              <Text style={[styles.tagText, { color: '#22C55E' }]}>UP TO DATE</Text>
             </View>
           </View>
-          <Text style={styles.cardTitle}>All Devices Secure</Text>
-          <Text style={styles.cardSubtitle}>No warranties expiring soon</Text>
+          <Text style={styles.cardTitle}>Warranties Up to Date</Text>
+          <Text style={styles.cardSubtitle}>All your products are covered</Text>
           <TouchableOpacity
             style={styles.cardActionBtn}
             activeOpacity={0.7}

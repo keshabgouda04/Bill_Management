@@ -3,27 +3,39 @@ import { Modal, View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityInd
 import { Ionicons } from '@expo/vector-icons';
 import { useInviteMember, FamilyRole } from '../api/familyApi';
 
+import { validateEmail } from '../../../utils/validators';
+
 interface InviteMemberModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
 export default function InviteMemberModal({ visible, onClose }: InviteMemberModalProps) {
-  const [email, setEmail] = useState('');
+  const [email, setEmailState] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [role, setRole] = useState<FamilyRole>('MEMBER');
   
   const inviteMutation = useInviteMember();
 
+  const handleEmailChange = (val: string) => {
+    setEmailState(val);
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
   const handleInvite = () => {
-    if (!email.trim() || !email.includes('@')) {
-      Alert.alert('Validation Error', 'Please enter a valid email address.');
+    const err = validateEmail(email);
+    if (err) {
+      setEmailError(err);
       return;
     }
 
     inviteMutation.mutate({ email: email.trim().toLowerCase(), role }, {
       onSuccess: () => {
         Alert.alert('Success', 'Invitation sent successfully!');
-        setEmail('');
+        setEmailState('');
+        setEmailError(null);
         setRole('MEMBER');
         onClose();
       },
@@ -35,7 +47,8 @@ export default function InviteMemberModal({ visible, onClose }: InviteMemberModa
   };
 
   const handleClose = () => {
-    setEmail('');
+    setEmailState('');
+    setEmailError(null);
     setRole('MEMBER');
     onClose();
   };
@@ -49,18 +62,23 @@ export default function InviteMemberModal({ visible, onClose }: InviteMemberModa
           <Text style={styles.title}>Invite Member</Text>
           <Text style={styles.subtitle}>Enter an email to invite someone to this family workspace.</Text>
           
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#888" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : null]}>
+            <Ionicons name="mail-outline" size={20} color={emailError ? '#EF4444' : '#888'} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Email address"
               placeholderTextColor="#999"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
+          {emailError && (
+            <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '500', marginTop: -14, marginBottom: 14 }}>
+              {emailError}
+            </Text>
+          )}
 
           <View style={styles.roleContainer}>
             <Text style={styles.roleLabel}>Role</Text>
