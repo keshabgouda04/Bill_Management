@@ -66,7 +66,7 @@ export default function BillDetailsScreen() {
     (vaultData as any)?.sharedBill?.bills ||
     (vaultData as any)?.data?.sharedBill?.bills ||
     (vaultData as any)?.data?.bills;
-
+  console.log("billlsssssss====>", bill)
   const billOwnerId =
     bill?.user_id ||
     (vaultData as any)?.shared_by ||
@@ -372,8 +372,10 @@ export default function BillDetailsScreen() {
 
           {bill.bill_items && bill.bill_items.length > 0 ? (
             bill.bill_items.map((item: any, index: number) => {
-              const hasItemTax = typeof item.tax_amount === 'number' && item.tax_amount > 0;
-              const hasWarrantyMonths = typeof item.warranty_months === 'number' && item.warranty_months > 0;
+              const itemTaxNum = typeof item.tax_amount === 'number' ? item.tax_amount : parseFloat(item.tax_amount || 0);
+              const hasItemTax = !isNaN(itemTaxNum) && itemTaxNum > 0;
+              const warrantyMonthsNum = typeof item.warranty_months === 'number' ? item.warranty_months : parseInt(item.warranty_months || 0, 10);
+              const hasWarrantyMonths = !isNaN(warrantyMonthsNum) && warrantyMonthsNum > 0;
 
               return (
                 <View

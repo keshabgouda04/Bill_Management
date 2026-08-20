@@ -18,7 +18,7 @@ export default function PendingInvitationCard({
   isRejecting = false,
 }: PendingInvitationCardProps) {
   // Extract Family Name
-  const familyName = invite.family_groups?.name || invite.family_name || invite.family?.name || 'Family Workspace';
+  const familyName = invite.family_groups?.name || invite.family_name || invite.family?.name || 'Family Vault';
 
   // Extract Inviter Profile Email (person who invited)
   const inviterEmail = (
@@ -32,7 +32,6 @@ export default function PendingInvitationCard({
     (typeof invite.invited_by === 'string' && invite.invited_by.includes('@') ? invite.invited_by : '') ||
     (typeof invite.inviter === 'string' && invite.inviter.includes('@') ? invite.inviter : '')
   );
-
   // Extract Inviter Avatar URL
   const inviterAvatarUrl = (
     invite.family_groups?.profiles?.avatar_url ||

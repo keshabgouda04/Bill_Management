@@ -20,10 +20,14 @@ import {
   useCreateVisitingCard,
   useUpdateVisitingCard,
   useDeleteVisitingCard,
+  useUploadCardPhoto,
+  useDeleteCardPhoto,
+  useUploadCardLogo,
+  useDeleteCardLogo,
 } from '../../../services/mutation/cards/cards';
 import { VisitingCard, CreateVisitingCardPayload } from '../types/cardTypes';
 import { ThreeDVisitingCard } from '../components/ThreeDVisitingCard';
-import { CardFormModal } from '../components/CardFormModal';
+import { CardFormModal, CardFormSubmitData } from '../components/CardFormModal';
 import { QRCodeModal } from '../components/QRCodeModal';
 import { CardDivider } from '../components/CardDivider';
 
@@ -33,6 +37,11 @@ export function CardsScreen() {
   const updateMutation = useUpdateVisitingCard();
   const deleteMutation = useDeleteVisitingCard();
 
+  const uploadPhotoMutation = useUploadCardPhoto();
+  const deletePhotoMutation = useDeleteCardPhoto();
+  const uploadLogoMutation = useUploadCardLogo();
+  const deleteLogoMutation = useDeleteCardLogo();
+
   const [formModalVisible, setFormModalVisible] = React.useState(false);
   const [editingCard, setEditingCard] = React.useState<VisitingCard | null>(null);
   const [selectedQRCard, setSelectedQRCard] = React.useState<VisitingCard | null>(null);
@@ -41,10 +50,14 @@ export function CardsScreen() {
   // Auto-fetch API list when focused
   useFocusEffect(
     useCallback(() => {
-      console.log('[DEBUG CardsScreen] Screen gained focus - calling refetch() for visiting cards API');
+      console.log('🔍 [CardsScreen] Focused - Triggering refetch() for visiting cards...');
       refetch();
     }, [refetch])
   );
+
+  React.useEffect(() => {
+    console.log('📱 [CardsScreen VISITING CARDS LIST DATA]:', JSON.stringify(cards, null, 2));
+  }, [cards]);
 
   const handleOpenCreate = () => {
     setEditingCard(null);
@@ -83,19 +96,52 @@ export function CardsScreen() {
     );
   };
 
-  const handleFormSubmit = async (payload: CreateVisitingCardPayload) => {
+  const handleFormSubmit = async ({
+    payload,
+    localPhoto,
+    localLogo,
+    shouldDeletePhoto,
+    shouldDeleteLogo,
+  }: CardFormSubmitData) => {
     try {
-      if (editingCard) {
-        await updateMutation.mutateAsync({ id: editingCard.id, payload });
-        Alert.alert('Success', 'Visiting card updated successfully!');
+      let cardId = editingCard?.id;
+
+      // Step 1: Create or Update text details (without local file:/// paths in JSON)
+      if (editingCard && cardId) {
+        await updateMutation.mutateAsync({ id: cardId, payload });
       } else {
-        await createMutation.mutateAsync(payload);
-        Alert.alert('Success', 'Visiting card created successfully!');
+        const createdCard = await createMutation.mutateAsync(payload);
+        cardId = createdCard?.id;
       }
+
+      if (!cardId) {
+        throw new Error('Failed to retrieve card ID.');
+      }
+
+      // Step 2: Upload or Delete Profile Photo to Cloudflare R2
+      if (localPhoto && localPhoto.uri) {
+        console.log('📤 [R2 UPLOAD] Uploading profile photo for card ID:', cardId);
+        await uploadPhotoMutation.mutateAsync({ id: cardId, file: localPhoto });
+      } else if (shouldDeletePhoto && editingCard) {
+        console.log('🗑️ [R2 DELETE] Removing profile photo for card ID:', cardId);
+        await deletePhotoMutation.mutateAsync(cardId);
+      }
+
+      // Step 3: Upload or Delete Company Logo to Cloudflare R2
+      if (localLogo && localLogo.uri) {
+        console.log('📤 [R2 UPLOAD] Uploading company logo for card ID:', cardId);
+        await uploadLogoMutation.mutateAsync({ id: cardId, file: localLogo });
+      } else if (shouldDeleteLogo && editingCard) {
+        console.log('🗑️ [R2 DELETE] Removing company logo for card ID:', cardId);
+        await deleteLogoMutation.mutateAsync(cardId);
+      }
+
+      Alert.alert('Success', editingCard ? 'Visiting card updated successfully!' : 'Visiting card created successfully!');
       setFormModalVisible(false);
       setEditingCard(null);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to save visiting card.');
+    } catch (e: any) {
+      console.error('Failed to save visiting card:', e);
+      Alert.alert('Error', e?.message || 'Failed to save visiting card.');
     }
   };
 

@@ -58,8 +58,8 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
           <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{family?.name || family?.family_name || 'Family Workspace'}</Text>
-          <Text style={styles.headerSubtitle}>Family Workspace</Text>
+          <Text style={styles.headerTitle}>{family?.name || family?.family_name || 'Family Vault'}</Text>
+          <Text style={styles.headerSubtitle}>Family Vault</Text>
         </View>
         {isOwner ? (
           <TouchableOpacity
@@ -93,14 +93,14 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
           {/* Family Card */}
           {(() => {
             const totalCount = (ownerMember ? 1 : 0) + activeMembers.length;
-            const displayName = family?.name || family?.family_name || 'Family Workspace';
+            const displayName = family?.name || family?.family_name || 'Family Vault';
             return (
               <View style={styles.infoCard}>
                 <Ionicons name="people" size={32} color="#4B65E4" style={styles.infoIcon} />
                 <View>
                   <Text style={styles.infoTitle}>{displayName}</Text>
                   <Text style={styles.infoMembersCount}>
-                    {totalCount} {totalCount === 1 ? 'Member' : 'Members'} in workspace
+                    {totalCount} {totalCount === 1 ? 'Member' : 'Members'} in family vault
                   </Text>
                 </View>
               </View>
@@ -120,7 +120,7 @@ export default function FamilyDashboardScreen({ family, onBack }: FamilyDashboar
           />
 
           {/* Owner Section */}
-          <Text style={styles.sectionHeader}>WORKSPACE OWNER</Text>
+          <Text style={styles.sectionHeader}>VAULT OWNER</Text>
           {ownerMember ? (
             <FamilyMemberRow
               member={ownerMember}

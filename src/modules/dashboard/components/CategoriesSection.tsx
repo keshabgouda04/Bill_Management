@@ -5,30 +5,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../../navigation/AppNavigator';
 import { useGetBills, useGetBillsInfinite } from '../../bills/api/billsApi';
+import { getCategoryByName } from '../../../constants/categories';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
-
-const CATEGORY_META: Record<string, { emoji: string; color: string }> = {
-  groceries: { emoji: '🛒', color: '#ECFDF5' }, // light green
-  dining: { emoji: '🍕', color: '#FFF7ED' }, // light orange
-  utilities: { emoji: '🔌', color: '#EFF6FF' }, // light blue
-  transportation: { emoji: '🚗', color: '#FAF5FF' }, // light purple
-  entertainment: { emoji: '🍿', color: '#FEF2F2' }, // light red
-  electronics: { emoji: '📱', color: '#EEF2FF' }, // light indigo
-  shopping: { emoji: '🛍️', color: '#FFF7ED' }, // light orange
-  healthcare: { emoji: '❤️', color: '#FDF2F8' }, // light pink
-  education: { emoji: '🎓', color: '#F0FDFA' }, // light teal
-  travel: { emoji: '✈️', color: '#ECFEFF' }, // light cyan
-  'home & furniture': { emoji: '🏠', color: '#FEF3C7' }, // light amber
-  fashion: { emoji: '👕', color: '#FCE7F3' }, // light rose
-  insurance: { emoji: '🛡️', color: '#F3F4F6' }, // light gray
-  business: { emoji: '💼', color: '#EEF2FF' }, // light indigo
-  subscription: { emoji: '🔁', color: '#F5F3FF' }, // light violet
-  'pet care': { emoji: '🐾', color: '#F1F8E9' }, // light lime
-  gifts: { emoji: '🎁', color: '#FFF5F5' }, // light red
-  taxes: { emoji: '📝', color: '#ECEFF1' }, // light blue-gray
-  others: { emoji: '📦', color: '#F9FAFB' }, // light gray
-};
 
 export const CategoriesSection = () => {
   const navigation = useNavigation<Nav>();
@@ -46,14 +25,13 @@ export const CategoriesSection = () => {
     });
 
     const list = Object.entries(totals).map(([name, sum]) => {
-      const key = name.toLowerCase();
-      const meta = CATEGORY_META[key] || CATEGORY_META.others;
+      const cat = getCategoryByName(name);
       return {
-        id: name,
-        label: name,
-        emoji: meta.emoji,
+        id: cat?.id || name,
+        label: cat?.name || name,
+        emoji: cat?.emoji || '📦',
         amount: sum,
-        color: meta.color,
+        color: cat?.color || '#F9FAFB',
       };
     });
 

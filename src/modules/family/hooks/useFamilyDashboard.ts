@@ -70,7 +70,7 @@ export function useFamilyDashboard(family: FamilyDetails) {
 
   // Handlers
   const handleAccept = (memberId: string) => {
-    Alert.alert('Accept Invitation', 'Do you want to join this family workspace?', [
+    Alert.alert('Accept Invitation', 'Do you want to join this family vault?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Accept',

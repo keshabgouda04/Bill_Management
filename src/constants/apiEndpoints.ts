@@ -47,5 +47,9 @@ export const API_URL = {
     DETAIL: (id: string) => `/api/v1/visiting-cards/${id}`,
     UPDATE: (id: string) => `/api/v1/visiting-cards/${id}`,
     DELETE: (id: string) => `/api/v1/visiting-cards/${id}`,
+    UPLOAD_PHOTO: (id: string) => `/api/v1/visiting-cards/${id}/photo`,
+    DELETE_PHOTO: (id: string) => `/api/v1/visiting-cards/${id}/photo`,
+    UPLOAD_LOGO: (id: string) => `/api/v1/visiting-cards/${id}/logo`,
+    DELETE_LOGO: (id: string) => `/api/v1/visiting-cards/${id}/logo`,
   },
 };

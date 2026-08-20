@@ -43,19 +43,28 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
     personalBills;
   const billsList: any[] = Array.isArray(rawBills) ? rawBills : [];
 
-  // Extract active family member emails
-  const activeMembers = Array.isArray(membersData?.data?.members || membersData?.members)
+
+  console.log("members dtata", membersData)
+  
+  const owner = membersData?.data?.owner || membersData?.owner;
+  const ownerEmail = (owner?.email || '').toLowerCase().trim();
+
+  // Extract active family members (ADMIN and MEMBER roles)
+  const activeMembers: any[] = Array.isArray(membersData?.data?.members || membersData?.members)
     ? membersData?.data?.members || membersData?.members
     : [];
 
-  const memberEmails: string[] = activeMembers
+  // Exclude Family Owner and current user from selective recipients
+  const nonOwnerMembers = activeMembers.filter((m: any) => {
+    const email = (m.profiles?.email || m.email || '').toLowerCase().trim();
+    const isOwner = m.role === 'OWNER' || (ownerEmail && email === ownerEmail);
+    const isCurrentUser = currentUserEmail && email === currentUserEmail;
+    return !isOwner && !isCurrentUser;
+  });
+
+  const displayMemberEmails = nonOwnerMembers
     .map((m: any) => m.profiles?.email || m.email)
     .filter(Boolean);
-
-  // Exclude current user's email from UI selection list
-  const displayMemberEmails = memberEmails.filter(
-    (email: string) => !currentUserEmail || email.toLowerCase().trim() !== currentUserEmail
-  );
 
   // Set of bill IDs that are already shared in the family vault
   const sharedBillIds = new Set((vaultBills || []).map((vb: any) => vb.bill_id));
@@ -77,18 +86,20 @@ export default function ShareToVaultModal({ visible, onClose }: ShareToVaultModa
     if (visibilityType === 'SELECTIVE' && displayMemberEmails.length > 0 && selectedEmails.length === 0) {
       Alert.alert(
         'Select Recipients',
-        'Please select at least one family member to share this bill with.'
+        'Please select at least one family member or admin to share this bill with.'
       );
       return;
     }
 
-    // Auto-include current user's email behind the scenes if selective visibility is used
+    const isCurrentUserFamilyOwner = Boolean(currentUserEmail && ownerEmail && currentUserEmail === ownerEmail);
+
+    // If current user is ADMIN or MEMBER, include their own email; exclude the Family Owner
     const finalSharedEmails =
       visibilityType === 'SELECTIVE'
         ? Array.from(
             new Set([
-              ...selectedEmails,
-              ...(currentUserEmail ? [currentUserEmail] : []),
+              ...selectedEmails.filter((email: string) => email.toLowerCase().trim() !== ownerEmail),
+              ...(!isCurrentUserFamilyOwner && currentUserEmail ? [currentUserEmail] : []),
             ])
           )
         : [];

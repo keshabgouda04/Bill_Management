@@ -49,12 +49,12 @@ export const FamilyVaultSection = ({ onPress }: FamilyVaultSectionProps) => {
           <ActivityIndicator color="#4B65E4" style={{ padding: 8 }} />
         ) : !family ? (
           <View style={styles.noFamilyRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.noFamilyTitle}>No Family Workspace</Text>
-              <Text style={styles.noFamilySub}>Create or join a family to share bills</Text>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.noFamilyTitle}>Family Vault</Text>
+              <Text style={styles.noFamilySub}>Share household bills, track shared expenses & manage finances together</Text>
             </View>
             <TouchableOpacity style={styles.familyBtn} onPress={onPress}>
-              <Text style={styles.familyBtnText}>Create +</Text>
+              <Text style={styles.familyBtnText}>Get Started →</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   familyVaultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   noFamilyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 },
   noFamilyTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  noFamilySub: { fontSize: 12, color: '#888', marginTop: 2 },
+  noFamilySub: { fontSize: 12, color: '#666', marginTop: 3, lineHeight: 16 },
   familyAvatars: { flexDirection: 'row', alignItems: 'center' },
   familyAvatar: {
     width: 32, height: 32, borderRadius: 16,

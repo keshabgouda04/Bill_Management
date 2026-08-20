@@ -67,8 +67,10 @@ const parseDateToISO = (dateStr: string): string | null => {
   return date.toISOString();
 };
 
-const formatNumberInput = (value?: number | null) => {
-  return typeof value === 'number' ? String(value) : '';
+const formatNumberInput = (value?: number | string | null) => {
+  if (value === null || value === undefined || value === '') return '0';
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  return isNaN(num) ? '0' : String(num);
 };
 
 const parseNumberInput = (
@@ -143,7 +145,7 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
     if (hasProducts) {
       setSubtotal(formatNumberInput(productsTotal));
       setTaxAmount(formatNumberInput(productsTaxTotal));
-      const initialDiscount = bill.discount_amount || 0;
+      const initialDiscount = typeof bill.discount_amount === 'string' ? parseFloat(bill.discount_amount) || 0 : (bill.discount_amount || 0);
       setDiscountAmount(formatNumberInput(initialDiscount));
       setTotalAmount(formatNumberInput(productsTotal + productsTaxTotal - initialDiscount));
     } else {
@@ -246,15 +248,14 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
       return;
     }
 
-    const calculatedTotal = parsedSubtotal + parsedTax - parsedDiscount;
+    const calculatedGrossTotal = parsedSubtotal + parsedTax - parsedDiscount;
+    const calculatedNetTotal = parsedSubtotal + parsedTax;
 
-    if (calculatedTotal < 0) {
-      Alert.alert('Invalid Amounts', 'Discount cannot be greater than subtotal plus tax.');
-      return;
-    }
+    const isGrossMatch = Math.abs(calculatedGrossTotal - parsedTotal) <= AMOUNT_TOLERANCE;
+    const isNetMatch = Math.abs(calculatedNetTotal - parsedTotal) <= AMOUNT_TOLERANCE;
 
-    if (Math.abs(calculatedTotal - parsedTotal) > AMOUNT_TOLERANCE) {
-      Alert.alert('Invalid Total', 'Total amount should match subtotal plus tax minus discount.');
+    if (!isGrossMatch && !isNetMatch) {
+      Alert.alert('Invalid Total', 'Total amount should match subtotal, tax, and discount.');
       return;
     }
 
@@ -511,10 +512,12 @@ export default function EditBillModal({ visible, bill, onClose }: EditBillModalP
               <View style={styles.col}>
                 <Text style={styles.fieldLabel}>Discount Amount (₹)</Text>
                 <TextInput
-                  style={[styles.fieldInput, { backgroundColor: '#EAEAEA', color: '#666' }]}
+                  style={styles.fieldInput}
+                  placeholder="0"
+                  placeholderTextColor="#BBB"
                   keyboardType="numeric"
                   value={discountAmount}
-                  editable={false}
+                  onChangeText={handleDiscountChange}
                 />
               </View>
               <View style={styles.col}>

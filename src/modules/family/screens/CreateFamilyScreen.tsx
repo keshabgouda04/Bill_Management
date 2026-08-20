@@ -22,11 +22,11 @@ interface CreateFamilyScreenProps {
 
 export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) {
   const [familyName, setFamilyName] = useState('');
-  
+
   const createFamilyMutation = useCreateFamily();
   const acceptInviteMutation = useAcceptInvitation();
   const rejectInviteMutation = useRejectInvitation();
-  
+
   const { data: rawPendingInvitations, isLoading: loadingInvites, isRefetching, refetch: refetchInvites } = useGetPendingInvitations();
 
   const rawData = rawPendingInvitations as any;
@@ -44,7 +44,7 @@ export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) 
       Alert.alert('Validation Error', familyNameErr);
       return;
     }
-    
+
     createFamilyMutation.mutate(familyName, {
       onSuccess: () => {
         Alert.alert('Success', 'Family created successfully!');
@@ -91,8 +91,8 @@ export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) 
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content} 
+      <ScrollView
+        style={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetchInvites} colors={['#4B65E4']} />
@@ -116,41 +116,42 @@ export default function CreateFamilyScreen({ onBack }: CreateFamilyScreenProps) 
             <View style={styles.noteBox}>
               <Ionicons name="information-circle-outline" size={20} color="#4B65E4" style={{ marginRight: 8 }} />
               <Text style={styles.noteText}>
-                You must accept or decline pending invitation(s) before creating a new family workspace.
+                You must accept or decline pending invitation(s) before creating a new family vault.
               </Text>
             </View>
           </View>
         ) : (
           <View style={styles.card}>
             <View style={styles.iconContainer}>
-              <Ionicons name="home" size={40} color="#4B65E4" />
+              <Ionicons name="people" size={40} color="#4B65E4" />
             </View>
-            <Text style={styles.title}>Create Your Family</Text>
+            <Text style={styles.title}>Create Family Vault</Text>
             <Text style={styles.subtitle}>
-              Start a family workspace to manage, view, and share bills with your household members.
+              Collaborate on household bills, track shared expenses, and manage finances seamlessly together in your family vault.
             </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 6 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#555' }}>Family Name</Text>
-              <Text style={{ fontSize: 11, fontWeight: '500', color: familyName.length >= 20 ? '#EF4444' : '#888' }}>
-                {familyName.length}/20
+              <Text style={{ fontSize: 11, fontWeight: '500', color: familyName.length >= 30 ? '#EF4444' : '#888' }}>
+                {familyName.length}/30
               </Text>
             </View>
             <TextInput
-              style={[styles.input, checkCharLimit(familyName, 20) ? { borderColor: '#EF4444' } : null]}
-              placeholder="e.g. The Smith Family"
-              placeholderTextColor="#999"
-              value={familyName}
-              onChangeText={setFamilyName}
-              maxLength={20}
+              style={[styles.input, checkCharLimit(familyName, 30) ? { marginBottom: 0 }:{marginBottom:20}, checkCharLimit(familyName, 30) ? {borderColor: '#EF4444'} : null]}
+            placeholder="e.g. The Smith Family"
+            placeholderTextColor="#999"
+            value={familyName}
+            onChangeText={setFamilyName}
+            maxLength={30}
+              
             />
-            {checkCharLimit(familyName, 20) && (
-              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4, fontWeight: '500' }}>
-              {checkCharLimit(familyName, 20, 'Family name')}
+            {checkCharLimit(familyName, 30) && (
+              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 2,marginBottom:20, fontWeight: '500' }}>
+                {checkCharLimit(familyName, 30, 'Family name')}
               </Text>
             )}
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.createButton, createFamilyMutation.isPending && styles.createButtonDisabled]}
               onPress={handleCreate}
               disabled={createFamilyMutation.isPending}
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
   input: {
     width: '100%', height: 50, backgroundColor: '#F5F7FA',
     borderRadius: 10, paddingHorizontal: 16, fontSize: 16,
-    color: '#1A1A1A', borderWidth: 1, borderColor: '#EAEAEA', marginBottom: 20,
+    color: '#1A1A1A', borderWidth: 1, borderColor: '#EAEAEA', 
   },
   createButton: {
     width: '100%', height: 50, backgroundColor: '#4B65E4',
@@ -205,12 +206,12 @@ const styles = StyleSheet.create({
   },
   createButtonDisabled: { opacity: 0.7 },
   createButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  
+
   invitesSection: { marginTop: 10 },
   sectionHeader: { fontSize: 12, fontWeight: '700', color: '#888', letterSpacing: 1, marginBottom: 16 },
   emptyContainer: { padding: 20, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CCC' },
   emptyText: { color: '#999', fontSize: 14 },
-  
+
   inviteCard: {
     backgroundColor: '#FFF', borderRadius: 14, padding: 18, marginBottom: 14,
     borderWidth: 1, borderColor: '#EAEAEA',

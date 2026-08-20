@@ -99,3 +99,89 @@ export const useDeleteVisitingCard = () => {
     },
   });
 };
+
+export const useUploadCardPhoto = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: { uri: string; name?: string; type?: string } }): Promise<VisitingCard> => {
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: file.uri,
+        name: file.name || 'photo.jpg',
+        type: file.type || 'image/jpeg',
+      } as any);
+
+      console.log('📤 [UPLOAD CARD PHOTO] Uploading photo for card ID:', id);
+      const response = await api.post<any>(API_URL.VISITING_CARDS.UPLOAD_PHOTO(id), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, variables) => {
+      console.log('✅ [UPLOAD CARD PHOTO SUCCESS] Card ID:', variables.id);
+      queryClient.invalidateQueries({ queryKey: ['visiting-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['visiting-card-detail', variables.id] });
+    },
+  });
+};
+
+export const useDeleteCardPhoto = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<VisitingCard> => {
+      console.log('🗑️ [DELETE CARD PHOTO] Removing photo for card ID:', id);
+      const response = await api.delete<any>(API_URL.VISITING_CARDS.DELETE_PHOTO(id));
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, id) => {
+      console.log('✅ [DELETE CARD PHOTO SUCCESS] Card ID:', id);
+      queryClient.invalidateQueries({ queryKey: ['visiting-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['visiting-card-detail', id] });
+    },
+  });
+};
+
+export const useUploadCardLogo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: { uri: string; name?: string; type?: string } }): Promise<VisitingCard> => {
+      const formData = new FormData();
+      formData.append('logo', {
+        uri: file.uri,
+        name: file.name || 'logo.jpg',
+        type: file.type || 'image/jpeg',
+      } as any);
+
+      console.log('📤 [UPLOAD CARD LOGO] Uploading logo for card ID:', id);
+      const response = await api.post<any>(API_URL.VISITING_CARDS.UPLOAD_LOGO(id), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, variables) => {
+      console.log('✅ [UPLOAD CARD LOGO SUCCESS] Card ID:', variables.id);
+      queryClient.invalidateQueries({ queryKey: ['visiting-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['visiting-card-detail', variables.id] });
+    },
+  });
+};
+
+export const useDeleteCardLogo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string): Promise<VisitingCard> => {
+      console.log('🗑️ [DELETE CARD LOGO] Removing logo for card ID:', id);
+      const response = await api.delete<any>(API_URL.VISITING_CARDS.DELETE_LOGO(id));
+      return response.data?.data || response.data;
+    },
+    onSuccess: (_, id) => {
+      console.log('✅ [DELETE CARD LOGO SUCCESS] Card ID:', id);
+      queryClient.invalidateQueries({ queryKey: ['visiting-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['visiting-card-detail', id] });
+    },
+  });
+};
