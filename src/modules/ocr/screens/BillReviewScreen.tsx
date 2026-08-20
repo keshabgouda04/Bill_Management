@@ -22,7 +22,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import OcrScannerOverlay from '../components/OcrScannerOverlay';
-import { CATEGORIES } from '../../upload/constants/categories';
+import { CATEGORIES, DEFAULT_CATEGORY_ID, getCategoryById, getCategoryByName } from '../../../constants/categories';
 import { CategorySelectorModal } from '../../upload/components/CategorySelectorModal';
 import { PaymentMethodSelector } from '../../upload/components/PaymentMethodSelector';
 import { AttachmentSelector } from '../../upload/components/AttachmentSelector';
@@ -219,16 +219,10 @@ export default function BillReviewScreen() {
       // Match category
       const rawCat = structured.category_id || structured.category;
       if (rawCat) {
-        const found = CATEGORIES.find(
-          (c) => c.id === rawCat || c.name.toLowerCase() === String(rawCat).toLowerCase()
-        );
-        if (found) {
-          setBillCategory(found.id);
-        } else {
-          setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933'); // Others fallback
-        }
+        const found = getCategoryById(rawCat) || getCategoryByName(String(rawCat));
+        setBillCategory(found?.id || DEFAULT_CATEGORY_ID);
       } else {
-        setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933');
+        setBillCategory(DEFAULT_CATEGORY_ID);
       }
 
       // Payment method
@@ -292,12 +286,12 @@ export default function BillReviewScreen() {
       if (lowerName.includes('apple') || lowerName.includes('iphone')) {
         setBillName('Apple Store');
         setInvoiceNumber('APL-INF-89028');
-        setBillCategory('6afcb160-d087-4e06-9523-8e5c8050b110'); // Electronics
+        setBillCategory(getCategoryByName('Electronics')?.id || DEFAULT_CATEGORY_ID);
         setPaymentMethod('CARD');
       } else {
         setBillName('');
         setInvoiceNumber('');
-        setBillCategory('6f3eefb9-2b6b-4860-8df0-18c06d389933');
+        setBillCategory(DEFAULT_CATEGORY_ID);
       }
       setScanError(err.response?.data?.message || err.message || 'OCR processing failed.');
       setIsScanning(false);
@@ -423,6 +417,32 @@ export default function BillReviewScreen() {
     }
 
     const numericTotal = parseFloat(billAmount) || productsTotal || 0;
+    const numericTax = parseFloat(taxAmount) || 0;
+    const numericDiscount = parseFloat(discountAmount) || 0;
+    const numericSubtotal = productsTotal > 0
+      ? productsTotal
+      : Math.max(0, numericTotal - numericTax + numericDiscount);
+
+    if (numericTotal <= 0) {
+      Alert.alert('Validation Error', 'Total amount must be greater than 0.');
+      return;
+    }
+
+    // Smart Validation: Supports both Format A (Gross Subtotal: Total = Subtotal + Tax - Discount)
+    // and Format B (Net Taxable Subtotal: Total = Subtotal + Tax)
+    const expectedGrossTotal = numericSubtotal + numericTax - numericDiscount;
+    const expectedNetTotal = numericSubtotal + numericTax;
+
+    const isGrossMatch = Math.abs(numericTotal - expectedGrossTotal) <= 0.05;
+    const isNetMatch = Math.abs(numericTotal - expectedNetTotal) <= 0.05;
+
+    if (!isGrossMatch && !isNetMatch) {
+      Alert.alert(
+        'Validation Error',
+        `Total amount (₹${numericTotal.toFixed(2)}) does not match subtotal (₹${numericSubtotal.toFixed(2)}) and tax (₹${numericTax.toFixed(2)}).`
+      );
+      return;
+    }
 
     const formData = new FormData();
     formData.append('purchase_location', billName.trim());

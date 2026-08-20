@@ -60,7 +60,7 @@ export default function InviteMemberModal({ visible, onClose }: InviteMemberModa
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>Invite Member</Text>
-          <Text style={styles.subtitle}>Enter an email to invite someone to this family workspace.</Text>
+          <Text style={styles.subtitle}>Enter an email to invite someone to this family vault.</Text>
           
           <View style={[styles.inputContainer, emailError ? { borderColor: '#EF4444' } : null]}>
             <Ionicons name="mail-outline" size={20} color={emailError ? '#EF4444' : '#888'} style={styles.inputIcon} />

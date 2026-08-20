@@ -24,32 +24,9 @@ interface MerchantDetailsCardProps {
   setNotes: (val: string) => void;
 }
 
-const PAYMENT_METHODS = ['UPI', 'CARD', 'CASH', 'NET_BANKING'];
-const CATEGORY_KEYS = [
-  'e8dc38e5-e3b0-4799-9a7d-c84cccec946b', // Groceries
-  '823e8e74-ac7d-44b2-b629-1d75f2ac9880', // Dining
-  'a8c399f9-2c7b-43e7-83b8-a5bd3f5d02c2', // Utilities
-  'bc2e5d69-32d4-41e6-9bf1-76b62a38b2c7', // Transportation
-  'bfffa3be-91e5-4d0c-ad6e-c4a017d17b34', // Entertainment
-  '6afcb160-d087-4e06-9523-8e5c8050b110', // Electronics
-  '8abeda0a-a91e-4367-b785-3479609fb4d9', // Shopping
-  '8eba8032-239f-4d0a-9002-f4373610063a', // Healthcare
-  '5cdfbaf1-c438-4547-b02b-d611f9396e3a', // Home & Furniture
-  '6f3eefb9-2b6b-4860-8df0-18c06d389933', // Others
-];
+import { CATEGORIES } from '../../../constants/categories';
 
-const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
-  'e8dc38e5-e3b0-4799-9a7d-c84cccec946b': { label: 'Groceries', emoji: '🛒' },
-  '823e8e74-ac7d-44b2-b629-1d75f2ac9880': { label: 'Dining', emoji: '🍕' },
-  'a8c399f9-2c7b-43e7-83b8-a5bd3f5d02c2': { label: 'Utilities', emoji: '🔌' },
-  'bc2e5d69-32d4-41e6-9bf1-76b62a38b2c7': { label: 'Transportation', emoji: '🚗' },
-  'bfffa3be-91e5-4d0c-ad6e-c4a017d17b34': { label: 'Entertainment', emoji: '🍿' },
-  '6afcb160-d087-4e06-9523-8e5c8050b110': { label: 'Electronics', emoji: '📱' },
-  '8abeda0a-a91e-4367-b785-3479609fb4d9': { label: 'Shopping', emoji: '🛍️' },
-  '8eba8032-239f-4d0a-9002-f4373610063a': { label: 'Healthcare', emoji: '❤️' },
-  '5cdfbaf1-c438-4547-b02b-d611f9396e3a': { label: 'Home & Furniture', emoji: '🏠' },
-  '6f3eefb9-2b6b-4860-8df0-18c06d389933': { label: 'Others', emoji: '📦' },
-};
+const PAYMENT_METHODS = ['UPI', 'CARD', 'CASH', 'NET_BANKING'];
 
 const formatDateToDDMMYYYY = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
@@ -162,17 +139,16 @@ export default function MerchantDetailsCard({
       {/* Category Selector */}
       <Text style={styles.fieldLabel}>Expense Category</Text>
       <View style={styles.pickerWrapper}>
-        {CATEGORY_KEYS.map((key) => {
-          const meta = CATEGORY_LABELS[key];
-          const isActive = billCategory === key;
+        {CATEGORIES.map((cat) => {
+          const isActive = billCategory === cat.id;
           return (
             <TouchableOpacity
-              key={key}
+              key={cat.id}
               style={[styles.methodChip, isActive && styles.methodChipActive]}
-              onPress={() => setBillCategory(key)}
+              onPress={() => setBillCategory(cat.id)}
             >
               <Text style={[styles.methodChipText, isActive && styles.methodChipTextActive]}>
-                {meta.emoji} {meta.label}
+                {cat.emoji} {cat.name}
               </Text>
             </TouchableOpacity>
           );

@@ -129,19 +129,19 @@ export const useManualEntryForm = (onClose: () => void) => {
     return sum + qty * price;
   }, 0);
 
-  // Auto-calculate Total Amount
+  // Auto-calculate Total Amount only when line-item products exist
   useEffect(() => {
-    const subtotal = productsTotal || 0;
-    const tax = parseFloat(taxAmount) || 0;
-    const discount = parseFloat(discountAmount) || 0;
-    
-    const calculatedTotal = subtotal + tax - discount;
-    if (calculatedTotal >= 0) {
-      setBillAmount(String(calculatedTotal));
-    } else {
-      setBillAmount('0');
+    if (products.length > 0) {
+      const subtotal = productsTotal || 0;
+      const tax = parseFloat(taxAmount) || 0;
+      const discount = parseFloat(discountAmount) || 0;
+
+      const calculatedTotal = subtotal + tax - discount;
+      if (calculatedTotal >= 0) {
+        setBillAmount(String(calculatedTotal));
+      }
     }
-  }, [productsTotal, taxAmount, discountAmount]);
+  }, [productsTotal, taxAmount, discountAmount, products.length]);
 
   const handleSelectAttachment = async () => {
     try {
@@ -164,9 +164,9 @@ export const useManualEntryForm = (onClose: () => void) => {
       const mime = file.mimeType || '';
       const isPdf = mime === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const isImage = mime.startsWith('image/') ||
-                      file.name.toLowerCase().endsWith('.jpg') ||
-                      file.name.toLowerCase().endsWith('.jpeg') ||
-                      file.name.toLowerCase().endsWith('.png');
+        file.name.toLowerCase().endsWith('.jpg') ||
+        file.name.toLowerCase().endsWith('.jpeg') ||
+        file.name.toLowerCase().endsWith('.png');
 
       if (!isPdf && !isImage) {
         Alert.alert('Invalid File', 'Only PDF files and images are allowed.');
@@ -307,6 +307,26 @@ export const useManualEntryForm = (onClose: () => void) => {
       }
     }
 
+    // Validate total amount matches either Format A (Gross Subtotal: Total = Subtotal + Tax - Discount)
+    // or Format B (Net Taxable Subtotal: Total = Subtotal + Tax)
+    if (parsedAmount && !isNaN(parsedAmount)) {
+      const currentTax = parsedTax || 0;
+      const currentDiscount = parsedDiscount || 0;
+      const currentSubtotal = products.length > 0
+        ? productsTotal
+        : Math.max(0, parsedAmount - currentTax + currentDiscount);
+
+      const expectedGrossTotal = currentSubtotal + currentTax - currentDiscount;
+      const expectedNetTotal = currentSubtotal + currentTax;
+
+      const isGrossMatch = Math.abs(parsedAmount - expectedGrossTotal) <= 0.05;
+      const isNetMatch = Math.abs(parsedAmount - expectedNetTotal) <= 0.05;
+
+      if (!isGrossMatch && !isNetMatch) {
+        newErrors.billAmount = `Total amount (₹${parsedAmount.toFixed(2)}) does not match subtotal (₹${currentSubtotal.toFixed(2)}) and tax (₹${currentTax.toFixed(2)}).`;
+      }
+    }
+
     // Warranty parsing
     let isoWarrantyDate: string | undefined = undefined;
     if (hasWarranty) {
@@ -326,14 +346,16 @@ export const useManualEntryForm = (onClose: () => void) => {
       setErrors(newErrors);
       return;
     }
-    
+
     // Clear all errors on successful validation
     setErrors({});
 
-    // Optional subtotal calculation
+    // Optional subtotal calculation: use line items total if present; otherwise total - tax + discount
     const taxVal = parsedTax || 0;
     const discountVal = parsedDiscount || 0;
-    const calculatedSubtotal = parsedAmount - taxVal + discountVal;
+    const finalSubtotal = products.length > 0
+      ? productsTotal
+      : Math.max(0, parsedAmount - taxVal + discountVal);
 
     const handleSuccess = (response: any) => {
       const createdBill = response?.data?.bill;
@@ -351,7 +373,7 @@ export const useManualEntryForm = (onClose: () => void) => {
       setBillNotes('');
       setHasWarranty(false);
       setWarrantyUntil('');
-      setSelectedReminders(['7_DAYS', '1_DAY']);
+      setSelectedReminders([]);
       setProducts([]);
       setProductName('');
       setProductDescription('');
@@ -380,7 +402,7 @@ export const useManualEntryForm = (onClose: () => void) => {
     formData.append('total_amount', parsedAmount.toString());
     formData.append('purchase_date', isoDate);
     formData.append('invoice_number', invoiceNumber.trim());
-    formData.append('subtotal', (calculatedSubtotal > 0 ? calculatedSubtotal : parsedAmount).toString());
+    formData.append('subtotal', finalSubtotal.toString());
 
     if (parsedTax !== undefined) {
       formData.append('tax_amount', parsedTax.toString());

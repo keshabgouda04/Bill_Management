@@ -26,11 +26,19 @@ import { ThreeDVisitingCard } from './ThreeDVisitingCard';
 
 const { width } = Dimensions.get('window');
 
+export interface CardFormSubmitData {
+  payload: CreateVisitingCardPayload;
+  localPhoto?: { uri: string; name?: string; type?: string } | null;
+  localLogo?: { uri: string; name?: string; type?: string } | null;
+  shouldDeletePhoto?: boolean;
+  shouldDeleteLogo?: boolean;
+}
+
 interface CardFormModalProps {
   visible: boolean;
   editingCard?: VisitingCard | null;
   onClose: () => void;
-  onSubmit: (payload: CreateVisitingCardPayload) => Promise<void>;
+  onSubmit: (data: CardFormSubmitData) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -211,14 +219,17 @@ export function CardFormModal({
   };
 
   const handleSubmit = async () => {
+    const isLocalPhoto = profilePhotoUrl?.startsWith('file://') || profilePhotoUrl?.startsWith('content://');
+    const isLocalLogo = companyLogoUrl?.startsWith('file://') || companyLogoUrl?.startsWith('content://');
+
     const payload: CreateVisitingCardPayload = {
       card_name: cardName,
       template_id: templateId,
       full_name: fullName,
       job_title: jobTitle,
       company_name: companyName || undefined,
-      company_logo_url: companyLogoUrl || undefined,
-      profile_photo_url: profilePhotoUrl || undefined,
+      company_logo_url: !isLocalLogo && companyLogoUrl ? companyLogoUrl : undefined,
+      profile_photo_url: !isLocalPhoto && profilePhotoUrl ? profilePhotoUrl : undefined,
       mobile: mobile,
       alternate_mobile: alternateMobile || undefined,
       email: email,
@@ -248,7 +259,25 @@ export function CardFormModal({
     }
 
     setValidationErrors({});
-    await onSubmit(payload);
+
+    const localPhoto = isLocalPhoto
+      ? { uri: profilePhotoUrl, name: 'profile_photo.jpg', type: 'image/jpeg' }
+      : null;
+
+    const localLogo = isLocalLogo
+      ? { uri: companyLogoUrl, name: 'company_logo.jpg', type: 'image/jpeg' }
+      : null;
+
+    const shouldDeletePhoto = Boolean(editingCard?.profile_photo_url && !profilePhotoUrl);
+    const shouldDeleteLogo = Boolean(editingCard?.company_logo_url && !companyLogoUrl);
+
+    await onSubmit({
+      payload,
+      localPhoto,
+      localLogo,
+      shouldDeletePhoto,
+      shouldDeleteLogo,
+    });
   };
 
   return (

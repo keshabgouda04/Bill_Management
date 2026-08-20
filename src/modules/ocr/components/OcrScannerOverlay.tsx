@@ -284,10 +284,10 @@ export default function OcrScannerOverlay({
       >
         {/* 1. HEADER SECTION */}
         <View style={styles.headerSection}>
-          <Animated.View style={[styles.aiIndicatorBadge, { transform: [{ scale: aiPulseAnim }] }]}>
+          {/* <Animated.View style={[styles.aiIndicatorBadge, { transform: [{ scale: aiPulseAnim }] }]}>
             <Ionicons name="sparkles" size={14} color="#6366F1" />
             <Text style={styles.aiIndicatorText}>Wallely AI Scan</Text>
-          </Animated.View>
+          </Animated.View> */}
 
           <Text style={styles.headerTitle}>Understanding your bill</Text>
           <Text style={styles.headerSubtitle}>

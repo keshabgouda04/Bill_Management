@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { VisitingCardProps } from '../types/cardProps';
@@ -95,14 +95,21 @@ export const CardFront: React.FC<CardFrontProps> = ({ data, isExpanded }) => {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        {/* Top Header Row: Company Logo & Brand Name */}
+        {/* Top Header Row: Company Logo & Profile Photo */}
         <View style={styles.topRow}>
           <View style={styles.logoBadge}>
-            <Ionicons name="briefcase-outline" size={16} color={theme.accentColor} />
+            {data.logo ? (
+              <Image source={{ uri: data.logo }} style={styles.logoImg} resizeMode="contain" />
+            ) : (
+              <Ionicons name="briefcase-outline" size={16} color={theme.accentColor} />
+            )}
             <Text style={[styles.companyText, { color: theme.textColor }]}>
-              {data.company || 'Vrrc'}
+              {data.company || 'Business'}
             </Text>
           </View>
+          {data.profileImage ? (
+            <Image source={{ uri: data.profileImage }} style={[styles.profileAvatar, { borderColor: theme.accentColor }]} />
+          ) : null}
         </View>
 
         {/* Middle Section: Metallic Chip Icon + Designation/Code Text */}
@@ -165,6 +172,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  logoImg: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+  },
+  profileAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
   },
   companyText: {
     fontSize: 16,

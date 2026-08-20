@@ -15,17 +15,20 @@ const PHOTO_FIELDS: Array<keyof BillDetail> = [
   'bill_photo_url',
 ];
 
-export function formatAmount(amount?: number, currency = 'INR'): string {
-  if (typeof amount !== 'number') return '-';
+export function formatAmount(amount?: number | string | null, currency = 'INR'): string {
+  if (amount === undefined || amount === null || amount === '') return '-';
+
+  const num = typeof amount === 'number' ? amount : parseFloat(String(amount).replace(/[^0-9.-]/g, ''));
+  if (isNaN(num)) return '-';
 
   try {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
+      currency: currency || 'INR',
+      maximumFractionDigits: 2,
+    }).format(num);
   } catch {
-    return `${currency} ${amount.toLocaleString('en-IN')}`;
+    return `${currency || 'INR'} ${num.toLocaleString('en-IN')}`;
   }
 }
 

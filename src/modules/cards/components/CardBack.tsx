@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,14 +141,23 @@ export const CardBack: React.FC<CardBackProps> = ({ data, onShowQR }) => {
         {/* Top Header Row: Company Logo Badge & Metallic Chip Icon */}
         <View style={styles.topRow}>
           <View style={styles.logoBadge}>
-            <Ionicons name="briefcase-outline" size={14} color={theme.accentColor} />
+            {data.logo ? (
+              <Image source={{ uri: data.logo }} style={styles.logoImg} resizeMode="contain" />
+            ) : (
+              <Ionicons name="briefcase-outline" size={14} color={theme.accentColor} />
+            )}
             <Text style={[styles.companyBadgeText, { color: theme.textColor }]}>
               {data.company || 'BUSINESS'}
             </Text>
           </View>
 
-          <View style={[styles.chipBox, { borderColor: theme.chipColor }]}>
-            <Ionicons name="hardware-chip-outline" size={16} color={theme.chipColor} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {data.profileImage ? (
+              <Image source={{ uri: data.profileImage }} style={[styles.profileAvatarSmall, { borderColor: theme.accentColor }]} />
+            ) : null}
+            <View style={[styles.chipBox, { borderColor: theme.chipColor }]}>
+              <Ionicons name="hardware-chip-outline" size={16} color={theme.chipColor} />
+            </View>
           </View>
         </View>
 
@@ -298,6 +308,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  logoImg: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  profileAvatarSmall: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   companyBadgeText: {
     fontSize: 13,

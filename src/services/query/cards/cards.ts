@@ -19,13 +19,14 @@ export const useGetVisitingCards = (params?: { limit?: number; offset?: number }
     queryKey: ['visiting-cards', params],
     queryFn: async (): Promise<VisitingCard[]> => {
       try {
-        console.log('[DEBUG Cards Query] Fetching visiting cards from API:', API_URL.VISITING_CARDS.LIST, 'Params:', params);
+        console.log('----------------------------------------------------');
+        console.log('🎴 [GET VISITING CARDS] Requesting:', API_URL.VISITING_CARDS.LIST, 'Params:', params);
         const response: any = await api.get(
           API_URL.VISITING_CARDS.LIST,
           { params }
         );
 
-        console.log('[DEBUG Cards Query] API Raw Response:', response);
+        console.log('📥 [GET VISITING CARDS RAW RESPONSE]:', JSON.stringify(response?.data || response, null, 2));
 
         let cardsList: VisitingCard[] = [];
         const body = response?.data !== undefined ? response.data : response;
@@ -43,10 +44,11 @@ export const useGetVisitingCards = (params?: { limit?: number; offset?: number }
           }
         }
 
-        console.log('[DEBUG Cards Query] Successfully extracted cards count:', cardsList.length, cardsList);
+        console.log('✅ [GET VISITING CARDS EXTRACTED DATA] Count:', cardsList.length, JSON.stringify(cardsList, null, 2));
+        console.log('----------------------------------------------------');
         return cardsList;
       } catch (error: any) {
-        console.error('[DEBUG Cards Query ERROR] Error fetching visiting cards:', error?.response?.data || error?.message || error);
+        console.error('❌ [GET VISITING CARDS ERROR]:', error?.response?.data || error?.message || error);
         return INITIAL_MOCK_CARDS;
       }
     },

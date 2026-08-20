@@ -126,7 +126,7 @@ export default function FamilyVaultSection({
             onPress={() => setFilterTab('PUBLIC')}
           >
             <Text style={[styles.tabText, filterTab === 'PUBLIC' && styles.tabTextActive]}>
-              Workspace Wide
+              Vault Wide
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
